@@ -71,8 +71,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // sample_paternity_given_error_rates
-Rcpp::List sample_paternity_given_error_rates(arma::uvec paternity, arma::ucube offspring_phenotypes, arma::umat maternal_phenotype, std::vector<arma::vec> allele_frequencies, arma::vec dropout_rate, arma::vec mistyping_rate);
-RcppExport SEXP _sydneyPaternity_sample_paternity_given_error_rates(SEXP paternitySEXP, SEXP offspring_phenotypesSEXP, SEXP maternal_phenotypeSEXP, SEXP allele_frequenciesSEXP, SEXP dropout_rateSEXP, SEXP mistyping_rateSEXP) {
+Rcpp::List sample_paternity_given_error_rates(arma::uvec paternity, arma::ucube offspring_phenotypes, arma::umat maternal_phenotype, std::vector<arma::vec> allele_frequencies, arma::vec dropout_rate, arma::vec mistyping_rate, const unsigned max_iter);
+RcppExport SEXP _sydneyPaternity_sample_paternity_given_error_rates(SEXP paternitySEXP, SEXP offspring_phenotypesSEXP, SEXP maternal_phenotypeSEXP, SEXP allele_frequenciesSEXP, SEXP dropout_rateSEXP, SEXP mistyping_rateSEXP, SEXP max_iterSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -82,7 +82,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::vector<arma::vec> >::type allele_frequencies(allele_frequenciesSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type dropout_rate(dropout_rateSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type mistyping_rate(mistyping_rateSEXP);
-    rcpp_result_gen = Rcpp::wrap(sample_paternity_given_error_rates(paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate));
+    Rcpp::traits::input_parameter< const unsigned >::type max_iter(max_iterSEXP);
+    rcpp_result_gen = Rcpp::wrap(sample_paternity_given_error_rates(paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate, max_iter));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -92,7 +93,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_sydneyPaternity_paternity_loglikelihood", (DL_FUNC) &_sydneyPaternity_paternity_loglikelihood, 6},
     {"_sydneyPaternity_recode_to_contiguous_integers", (DL_FUNC) &_sydneyPaternity_recode_to_contiguous_integers, 1},
     {"_sydneyPaternity_optimize_paternity_given_error_rates", (DL_FUNC) &_sydneyPaternity_optimize_paternity_given_error_rates, 6},
-    {"_sydneyPaternity_sample_paternity_given_error_rates", (DL_FUNC) &_sydneyPaternity_sample_paternity_given_error_rates, 6},
+    {"_sydneyPaternity_sample_paternity_given_error_rates", (DL_FUNC) &_sydneyPaternity_sample_paternity_given_error_rates, 7},
     {NULL, NULL, 0}
 };
 

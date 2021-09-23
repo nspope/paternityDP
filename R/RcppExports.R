@@ -17,7 +17,7 @@ optimize_paternity_given_error_rates <- function(paternity, offspring_phenotypes
     .Call(`_sydneyPaternity_optimize_paternity_given_error_rates`, paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate)
 }
 
-sample_paternity_given_error_rates <- function(paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate) {
-    .Call(`_sydneyPaternity_sample_paternity_given_error_rates`, paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate)
+sample_paternity_given_error_rates <- function(paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate, max_iter) {
+    .Call(`_sydneyPaternity_sample_paternity_given_error_rates`, paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate, max_iter)
 }
 
