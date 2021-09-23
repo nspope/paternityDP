@@ -193,12 +193,11 @@ Rcpp::List sample_paternity_given_error_rates
   arma::umat maternal_phenotype,
   std::vector<arma::vec> allele_frequencies,
   arma::vec dropout_rate,
-  arma::vec mistyping_rate)
+  arma::vec mistyping_rate,
+  const unsigned max_iter)
 {
   // samples from posterior distribution with Dirichlet process prior using algorithm 8 from Neal 2000 JCGS with m = 1
-  // this is maybe not working as anticipated
   const unsigned max_fathers = paternity.n_elem;
-  const unsigned max_iter = 100;
   const double alpha = 1.;
   double deviance;
   arma::umat paternity_samples (paternity.n_elem, max_iter+1);

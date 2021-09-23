@@ -54,10 +54,11 @@ mcmc_paternity <-
                                      maternal_genotype,
                                      my_allele_freqs,
                                      dropout_rates,
-                                     mistyping_rates)
+                                     mistyping_rates,
+                                     num_samples = 100)
 mcmc_number_of_fathers <- apply(mcmc_paternity$paternity,2,function(x) length(unique(x)))
 
 library(ggplot2)
 ggplot(data.frame(x=mcmc_number_of_fathers)) + theme_bw() + 
-  geom_histogram(aes(x=mcmc_number_of_fathers, y=..density..))  +
-  xlab("Estimated number of fathers for colony") + y("Posterior probability")
+  geom_histogram(aes(x=mcmc_number_of_fathers, y=..count../length(mcmc_number_of_fathers)), binwidth=1) +
+  xlim(0,20) + xlab("Estimated number of fathers for colony") + ylab("Posterior probability")
