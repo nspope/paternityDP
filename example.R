@@ -1,3 +1,5 @@
+library(sydneyPaternity)
+
 # 0. Simulate data
 set.seed(1)
 num_fathers <- 4
