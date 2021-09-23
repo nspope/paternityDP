@@ -5,6 +5,7 @@
 // [[Rcpp::plugins("cpp11")]]
 // [[Rcpp::depends("RcppArmadillo")]]
 
+// [[Rcpp::export]]
 double genotyping_error_model 
  (const arma::uvec& phenotype,
   const unsigned& genotype0, 
@@ -21,6 +22,7 @@ double genotyping_error_model
   const arma::uvec genotype = {genotype0, genotype1};
   const bool phenotype_is_homozygous = phenotype[0] == phenotype[1];
   const bool genotype_is_homozygous = genotype[0] == genotype[1];
+  if (number_of_alleles == 1) return 1.; //monomorphic loci
   if (genotype_is_homozygous) 
   {
     if (phenotype_is_homozygous && phenotype[0] == genotype[0])

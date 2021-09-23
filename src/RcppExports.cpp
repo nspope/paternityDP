@@ -11,6 +11,22 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// genotyping_error_model
+double genotyping_error_model(const arma::uvec& phenotype, const unsigned& genotype0, const unsigned& genotype1, const unsigned& number_of_alleles, const double& dropout_rate, const double& mistyping_rate);
+RcppExport SEXP _sydneyPaternity_genotyping_error_model(SEXP phenotypeSEXP, SEXP genotype0SEXP, SEXP genotype1SEXP, SEXP number_of_allelesSEXP, SEXP dropout_rateSEXP, SEXP mistyping_rateSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::uvec& >::type phenotype(phenotypeSEXP);
+    Rcpp::traits::input_parameter< const unsigned& >::type genotype0(genotype0SEXP);
+    Rcpp::traits::input_parameter< const unsigned& >::type genotype1(genotype1SEXP);
+    Rcpp::traits::input_parameter< const unsigned& >::type number_of_alleles(number_of_allelesSEXP);
+    Rcpp::traits::input_parameter< const double& >::type dropout_rate(dropout_rateSEXP);
+    Rcpp::traits::input_parameter< const double& >::type mistyping_rate(mistyping_rateSEXP);
+    rcpp_result_gen = Rcpp::wrap(genotyping_error_model(phenotype, genotype0, genotype1, number_of_alleles, dropout_rate, mistyping_rate));
+    return rcpp_result_gen;
+END_RCPP
+}
 // paternity_loglikelihood_by_locus
 double paternity_loglikelihood_by_locus(const arma::uvec& paternity, const arma::umat& offspring_phenotypes, const arma::uvec& maternal_phenotype, const arma::vec& allele_frequencies, const double& dropout_rate, const double& mistyping_rate);
 RcppExport SEXP _sydneyPaternity_paternity_loglikelihood_by_locus(SEXP paternitySEXP, SEXP offspring_phenotypesSEXP, SEXP maternal_phenotypeSEXP, SEXP allele_frequenciesSEXP, SEXP dropout_rateSEXP, SEXP mistyping_rateSEXP) {
@@ -89,6 +105,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_sydneyPaternity_genotyping_error_model", (DL_FUNC) &_sydneyPaternity_genotyping_error_model, 6},
     {"_sydneyPaternity_paternity_loglikelihood_by_locus", (DL_FUNC) &_sydneyPaternity_paternity_loglikelihood_by_locus, 6},
     {"_sydneyPaternity_paternity_loglikelihood", (DL_FUNC) &_sydneyPaternity_paternity_loglikelihood, 6},
     {"_sydneyPaternity_recode_to_contiguous_integers", (DL_FUNC) &_sydneyPaternity_recode_to_contiguous_integers, 1},
