@@ -12,36 +12,55 @@ double genotyping_error_model
   const unsigned& genotype1, 
   const unsigned& number_of_alleles,
   const double& dropout_rate, 
-  const double& mistyping_rate)
+  const double& mistyping_rate,
+  double& dropout_rate_gradient,
+  double& mistyping_rate_gradient)
 {
   // from Eqs 1 & 2 in Wang 2004 Genetics
   const double e1 = dropout_rate;
   const double e2 = mistyping_rate;
-  const double E1 = dropout_rate/(1 + dropout_rate);
   const double E2 = mistyping_rate/double(number_of_alleles-1);
+
   const arma::uvec genotype = {genotype0, genotype1};
   const bool phenotype_is_homozygous = phenotype[0] == phenotype[1];
   const bool genotype_is_homozygous = genotype[0] == genotype[1];
+
+  dropout_rate_gradient = 0.;
+  mistyping_rate_gradient = 0.;
+
   if (number_of_alleles == 1) return 1.; //monomorphic loci
+
   if (genotype_is_homozygous) 
   {
     if (phenotype_is_homozygous && phenotype[0] == genotype[0])
     {
+      mistyping_rate_gradient = -2.*(1.-E2)/double(number_of_alleles-1);
       return std::pow(1.-E2, 2);
-    } else if ((phenotype[0] == genotype[0] && phenotype[1] != genotype[0]) || (phenotype[0] != genotype[0] && phenotype[1] == genotype[0])) {
+    } else if ((phenotype[0] == genotype[0] && phenotype[1] != genotype[0]) || 
+               (phenotype[0] != genotype[0] && phenotype[1] == genotype[0]) ){
+      mistyping_rate_gradient = 2.-4.*E2;
       return 2.*e2*(1-E2);
     } else if (phenotype[0] != genotype[0] && phenotype[1] != genotype[0]) {
+      mistyping_rate_gradient = 2.*(2.-int(phenotype_is_homozygous))*e2;
       return (2.-int(phenotype_is_homozygous))*std::pow(e2, 2);
     }  
   } else {
     if (phenotype[0] == genotype[0] && phenotype[1] == genotype[1])
     {
-      return std::pow(1.-E2, 2) + std::pow(e2, 2) + 2.*e1*std::pow(1.-E2-e2, 2);
+      dropout_rate_gradient = -2.*std::pow(1.-E2-e2, 2);
+      mistyping_rate_gradient = -2.*(1.-E2)/double(number_of_alleles-1) +
+        2.*e2 + 4.*e1*(1.+1./double(number_of_alleles-1))*(1.-E2-e2);
+      return std::pow(1.-E2, 2) + std::pow(e2, 2) - 2.*e1*std::pow(1.-E2-e2, 2);
     } else if (phenotype_is_homozygous && (phenotype[0] == genotype[0] || phenotype[0] == genotype[1])) {
+      dropout_rate_gradient = std::pow(1.-E2-e2, 2);
+      mistyping_rate_gradient = 1.-2.*E2-2.*e1*(1.+1./double(number_of_alleles-1))*(1.-E2-e2);
       return e2*(1.-E2) + e1*std::pow(1.-E2-e2, 2);
-    } else if (phenotype[0] != genotype[0] && phenotype[0] != genotype[1] && phenotype[1] != genotype[0] && phenotype[1] != genotype[1]) {
+    } else if (phenotype[0] != genotype[0] && phenotype[0] != genotype[1] && 
+               phenotype[1] != genotype[0] && phenotype[1] != genotype[1] ){
+      mistyping_rate_gradient = 2.*(2.-int(phenotype_is_homozygous))*e2;
       return (2.-int(phenotype_is_homozygous))*std::pow(e2, 2);
     } else {
+      mistyping_rate_gradient = 1.-2.*E2+2.*e2;
       return e2*(1.-E2+e2);
     }
   }
@@ -70,6 +89,7 @@ double paternity_loglikelihood_by_locus
   if (arma::any(allele_frequencies_normalized < 0.)) Rcpp::stop("negative allele frequencies");
   if (dropout_rate <= 0. || mistyping_rate <= 0.) Rcpp::stop("negative genotyping error rates");
   double halfsib_likelihood = 0.;
+  double a,b;//placeholder
   for (unsigned w=0; w<number_of_alleles; ++w) // first maternal allele 
   { 
     for (unsigned v=w; v<number_of_alleles; ++v) // second maternal allele
@@ -80,7 +100,7 @@ double paternity_loglikelihood_by_locus
       if (maternal_phenotype.is_finite())
       {
         double maternal_phenotype_probability = 
-          genotyping_error_model(maternal_phenotype, w, v, number_of_alleles, dropout_rate, mistyping_rate);
+          genotyping_error_model(maternal_phenotype, w, v, number_of_alleles, dropout_rate, mistyping_rate, a, b);
         log_halfsib_likelihood += log(maternal_phenotype_probability);
       }
       for (auto father : fathers)
@@ -96,8 +116,8 @@ double paternity_loglikelihood_by_locus
             arma::uvec offspring_phenotype = offspring_phenotypes.col(offspring);
             if (offspring_phenotype.is_finite()) { 
               double offspring_phenotype_probability = // Mendelian segregation probs * phenotype probabilities
-                0.5 * genotyping_error_model(offspring_phenotype, w, u, number_of_alleles, dropout_rate, mistyping_rate) + 
-                0.5 * genotyping_error_model(offspring_phenotype, v, u, number_of_alleles, dropout_rate, mistyping_rate); 
+                0.5 * genotyping_error_model(offspring_phenotype, w, u, number_of_alleles, dropout_rate, mistyping_rate, a, b) + 
+                0.5 * genotyping_error_model(offspring_phenotype, v, u, number_of_alleles, dropout_rate, mistyping_rate, a, b); 
               log_fullsib_likelihood += log(offspring_phenotype_probability);
             }
           }
