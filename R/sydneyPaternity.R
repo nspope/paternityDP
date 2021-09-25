@@ -14,9 +14,9 @@ simulate_sibling_group <- function(number_of_offspring,
   paternal_ploidy <- 1
   offspring_ploidy <- 2
 
-  # reparameterize error rates to probabilities
-  probability_of_allelic_dropout_per_locus <- rate_of_allelic_dropout_per_locus / (1 + rate_of_allelic_dropout_per_locus)
-  probability_of_allelic_mistyping_per_locus <- rate_of_allelic_mistyping_per_locus / (number_of_alleles_per_msat - 1)
+  # reparameterize error rates to probabilities 
+  probability_of_allelic_dropout_per_locus <- rate_of_allelic_dropout_per_locus
+  probability_of_allelic_mistyping_per_locus <- rate_of_allelic_mistyping_per_locus
 
   # check inputs
   stopifnot(number_of_offspring >= 1)
@@ -88,16 +88,19 @@ simulate_sibling_group <- function(number_of_offspring,
     { 
       # this function replicates the error model used by COLONY, see (Wang 2004 Genetics) and (Wang 2018 Methods Ecology Evolution)
       # (the parameterization of error rates is a bit different to make it easier to read)
-      if (runif(1) < probability_of_allelic_dropout) 
+      if (runif(1) < 2*probability_of_allelic_dropout) 
       { 
         genotype[] <- sample(genotype, size=1) 
       }
       for (allele in 1:length(genotype)) 
       { 
-        if (runif(1) < probability_of_allelic_mistyping) 
-        { 
-          genotype[allele] <- sample(possible_alleles, size=1) 
-        } 
+        if (length(possible_alleles) > 1)
+        {
+          if (runif(1) < probability_of_allelic_mistyping) 
+          { 
+            genotype[allele] <- sample(possible_alleles[possible_alleles != genotype[allele]], size=1) 
+          } 
+        }
       }
       if (runif(1) < probability_of_missing_data) 
       { 

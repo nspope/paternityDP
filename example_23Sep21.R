@@ -16,20 +16,22 @@ allele_freqs <- list(
                      "bt30"=c("187"=0.100,"190"=0.900),
                      "b96"=c("238"=0.464,"240"=0.332,"244"=0.045,"246"=0.043,"250"=0.115),
                      "btms0081"=c("307"=0.487,"310"=0.513))
+allele_freqs <- lapply(allele_freqs, function(x) {z=rep(1/length(x),length(x)); names(z)<-names(x); z})
 
 # set simulation parameters here, all combinations of values will be considered
 grid_of_simulation_parameters <- 
   expand.grid(replicate=1:3, #probably want more like 1:100 for actual analysis
               num_fathers=1:10, #range of fathers in colony
-              error_rates_in_simulation=0.01, #used for simulating data
-              error_rates_in_estimation=0.01, #used for estimating from simulated data
-              proportion_missing_data=0.1, #use something realistic
-              number_of_offspring=20, 
+              error_rates_in_simulation=0.3, #used for simulating data
+              error_rates_in_estimation=0.3, #used for estimating from simulated data
+              proportion_missing_data=0.0, #use something realistic
+              number_of_offspring=100, 
               use_true_allele_freqs=FALSE) #if FALSE use uniform allele freqs for estimation
 
 #run simulations
 simulation_results <- data.frame()
-for(i in 1:nrow(grid_of_true_values)){
+#for(i in 1:nrow(grid_of_true_values)){
+i=4
 
 num_fathers <- grid_of_simulation_parameters$num_fathers[i]
 replicate <- grid_of_simulation_parameters$replicate[i]
@@ -71,6 +73,7 @@ starting_allele_freqs <- if(use_true_allele_freqs) allele_freqs else lapply(alle
 dropout_rates <- rep(error_rates_in_estimation, length(allele_freqs)) #for now just set to true values (used in simulations)
 mistyping_rates <- rep(error_rates_in_estimation, length(allele_freqs)) #for now just set to true values (used in simulations)
 estimated_paternity <- optimize_paternity_given_error_rates(starting_paternity,offspring_genotypes,maternal_genotype,starting_allele_freqs,dropout_rates,mistyping_rates)
+oof <- sydneyPaternity:::sample_error_rates_given_paternity(out$offspring_paternity,offspring_genotypes,maternal_genotype,starting_allele_freqs,dropout_rates,mistyping_rates)
 
 # 6. Compare estimated and true paternities
 mismatch_proportion <- sum(paternity_vector_to_adjacency_matrix(estimated_paternity$paternity) != paternity_vector_to_adjacency_matrix(out$offspring_paternity))/length(paternity_vector_to_adjacency_matrix(estimated_paternity$paternity))
