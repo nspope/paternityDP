@@ -87,10 +87,20 @@ simulate_sibling_group <- function(number_of_offspring,
                                            probability_of_missing_data)
     { 
       # this function replicates the error model used by COLONY, see (Wang 2004 Genetics) and (Wang 2018 Methods Ecology Evolution)
-      # (the parameterization of error rates is a bit different to make it easier to read)
-      if (runif(1) < 2*probability_of_allelic_dropout) 
+      if (runif(1) < probability_of_missing_data) 
       { 
-        genotype[] <- sample(genotype, size=1) 
+        genotype[] <- NA 
+        return(genotype)
+      }
+      dropouts <- 0
+      mistypes <- 0
+      if (length(unique(genotype)) > 1)
+      {
+        if (runif(1) < 2*probability_of_allelic_dropout) 
+        { 
+          genotype[] <- sample(genotype, size=1) 
+          dropouts <- dropouts+1
+        }
       }
       for (allele in 1:length(genotype)) 
       { 
@@ -99,15 +109,15 @@ simulate_sibling_group <- function(number_of_offspring,
           if (runif(1) < probability_of_allelic_mistyping) 
           { 
             genotype[allele] <- sample(possible_alleles[possible_alleles != genotype[allele]], size=1) 
+            mistypes <- mistypes+1
           } 
         }
       }
-      if (runif(1) < probability_of_missing_data) 
-      { 
-        genotype[] <- NA 
-      }
+      attr(genotype, "errors") <- c(dropouts,mistypes)
       return(genotype)
     }
+
+    errors <- c(0,0)
     for (father in 1:number_of_fathers) 
     { 
       observed_paternal_genotypes[,father,locus] <- 
@@ -119,23 +129,26 @@ simulate_sibling_group <- function(number_of_offspring,
     }
     for (mother in 1:number_of_mothers)
     { 
-      observed_maternal_genotypes[,mother,locus] <- 
+      observed_maternal_genotypes[,mother,locus] <- draw <-
         simulate_genotyping_errors(genotype = true_maternal_genotypes[,mother,locus], 
                                    possible_alleles = names(allele_frequencies_per_msat[[locus]]), 
                                    probability_of_allelic_dropout = probability_of_allelic_dropout_per_locus[locus], 
                                    probability_of_allelic_mistyping = probability_of_allelic_mistyping_per_locus[locus], 
                                    probability_of_missing_data = probability_of_missing_data)
+      if (!any(is.na(draw))) errors <- errors + attr(draw, "errors")
     }
     for (sib in 1:number_of_offspring) 
     { 
-      observed_offspring_genotypes[,sib,locus] <- 
+      observed_offspring_genotypes[,sib,locus] <- draw <-
         simulate_genotyping_errors(genotype = true_offspring_genotypes[,sib,locus], 
                                    possible_alleles = names(allele_frequencies_per_msat[[locus]]), 
                                    probability_of_allelic_dropout = probability_of_allelic_dropout_per_locus[locus], 
                                    probability_of_allelic_mistyping = probability_of_allelic_mistyping_per_locus[locus], 
                                    probability_of_missing_data = probability_of_missing_data)
+      if (!any(is.na(draw))) errors <- errors + attr(draw, "errors")
     }
   }
+  names(errors) <- c("dropouts", "mistypes")
 
   list("true_offspring_genotypes"=true_offspring_genotypes,
        "observed_offspring_genotypes"=observed_offspring_genotypes,
@@ -145,7 +158,8 @@ simulate_sibling_group <- function(number_of_offspring,
        "observed_paternal_genotypes"=observed_paternal_genotypes,
        "offspring_paternity"=offspring_paternity,
        "offspring_maternity"=offspring_maternity,
-       "observed_number_of_fathers"=length(unique(offspring_paternity))
+       "observed_number_of_fathers"=length(unique(offspring_paternity)),
+       "errors"=errors
        )
 }
 

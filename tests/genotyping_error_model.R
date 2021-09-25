@@ -3,7 +3,7 @@ library(sydneyPaternity)
 nall=4
 E1 = 0.23
 E2 = 0.46
-e1 = e1
+e1 = E1
 e2 = E2
 
 #test behavior for monomorphic
@@ -23,8 +23,9 @@ for(i in 1:ncol(geno))
 sum(out[out$genotype=="1/2",1])
 sum(out[out$genotype=="1/1",1])
 
-sim_error_model <- function(genotype, nall, err1, err2)
+sim_error_model <- function(genotype, nall, err1, err2, err3)
 {
+  nall <- length(nall)
   phenotype <- genotype
   if (genotype[1] != genotype[2])
   {
@@ -45,9 +46,11 @@ sim_error_model <- function(genotype, nall, err1, err2)
   }
   return(sort(phenotype))
 }
-table(apply(replicate(100000,sim_error_model(c(1,2),4,E1,E2)),2,paste,collapse="/"))/100000
+table(apply(replicate(100000,sim_error_model(c(1,2),1:4,E1,E2,0)),2,paste,collapse="/"))/100000
+table(apply(replicate(100000,sim_error_model2(c(1,2),1:4,E1,E2,0)),2,paste,collapse="/"))/100000
 out[out$genotype=="1/2",]
-table(apply(replicate(100000,sim_error_model(c(1,1),4,E1,E2)),2,paste,collapse="/"))/100000
+table(apply(replicate(100000,sim_error_model(c(1,1),1:4,E1,E2,0)),2,paste,collapse="/"))/100000
+table(apply(replicate(100000,sim_error_model2(c(1,1),1:4,E1,E2,0)),2,paste,collapse="/"))/100000
 out[out$genotype=="1/1",]
 
 #test event simulation probabilities

@@ -1,7 +1,7 @@
 library(sydneyPaternity)
 
 #for reproducible results
-set.seed(1)
+set.seed(3)
 
 #set realistic allele frequencies here
 allele_freqs <- list(
@@ -13,7 +13,8 @@ allele_freqs <- list(
                      "btms0073" = c("120"=0.053,"123"=0.907,"126"=0.036,"129"=0.004),
                      "bt10"=c("147"=0.009,"149"=0.084,"151"=0.142,"153"=0.202,"155"=0.142,"157"=0.090,"159"=0.145,"161"=0.151,"165"=0.012,"167"=0.024),
                      "bl11"=c("130"=0.132,"132"=0.355,"134"=0.026,"136"=0.263,"138"=0.132,"140"=0.066,"142"=0.026),
-                     "bt30"=c("187"=0.100,"190"=0.900),
+#                     "bt30"=c("187"=0.100,"190"=0.900),
+                     "bt30"=c("187"=0.025,"190"=0.900,"193"=0.05,"196"=0.025),
                      "b96"=c("238"=0.464,"240"=0.332,"244"=0.045,"246"=0.043,"250"=0.115),
                      "btms0081"=c("307"=0.487,"310"=0.513))
 allele_freqs <- lapply(allele_freqs, function(x) {z=rep(1/length(x),length(x)); names(z)<-names(x); z})
@@ -22,10 +23,10 @@ allele_freqs <- lapply(allele_freqs, function(x) {z=rep(1/length(x),length(x)); 
 grid_of_simulation_parameters <- 
   expand.grid(replicate=1:3, #probably want more like 1:100 for actual analysis
               num_fathers=1:10, #range of fathers in colony
-              error_rates_in_simulation=0.3, #used for simulating data
-              error_rates_in_estimation=0.3, #used for estimating from simulated data
+              error_rates_in_simulation=0.1, #used for simulating data
+              error_rates_in_estimation=0.1, #used for estimating from simulated data
               proportion_missing_data=0.0, #use something realistic
-              number_of_offspring=100, 
+              number_of_offspring=20, 
               use_true_allele_freqs=FALSE) #if FALSE use uniform allele freqs for estimation
 
 #run simulations
@@ -72,8 +73,18 @@ starting_paternity <- rep(1, dim(offspring_genotypes)[2]) #starting state for op
 starting_allele_freqs <- if(use_true_allele_freqs) allele_freqs else lapply(allele_freqs, function(x) rep(1/length(x), length(x)))
 dropout_rates <- rep(error_rates_in_estimation, length(allele_freqs)) #for now just set to true values (used in simulations)
 mistyping_rates <- rep(error_rates_in_estimation, length(allele_freqs)) #for now just set to true values (used in simulations)
-estimated_paternity <- optimize_paternity_given_error_rates(starting_paternity,offspring_genotypes,maternal_genotype,starting_allele_freqs,dropout_rates,mistyping_rates)
-oof <- sydneyPaternity:::sample_error_rates_given_paternity(out$offspring_paternity,offspring_genotypes,maternal_genotype,starting_allele_freqs,dropout_rates,mistyping_rates)
+#estimated_paternity <- optimize_paternity_given_error_rates(starting_paternity,offspring_genotypes,maternal_genotype,starting_allele_freqs,dropout_rates,mistyping_rates)
+
+locus <- 9
+oof <- sydneyPaternity:::sample_error_rates_given_paternity(out$offspring_paternity,offspring_genotypes[,,locus,drop=F],maternal_genotype[,locus,drop=F],starting_allele_freqs[locus],dropout_rates[locus],mistyping_rates[locus])
+grr <- expand.grid(err1=seq(-4,-0.5,0.1),err2=seq(-4,-0.5,0.1))
+grr$ll <- sapply(1:nrow(grr), function(i){
+  sydneyPaternity:::paternity_loglikelihood_by_locus(out$offspring_paternity-1,offspring_genotypes[,,locus],maternal_genotype[,locus],starting_allele_freqs[[locus]],10^(grr[i,1]),10^(grr[i,2]))
+})
+library(ggplot2)
+ggplot(grr) + 
+  geom_tile(aes(x=err1,y=err2,fill=exp(ll-max(ll)))) + #this works,sampling doesn't always seem to :-|
+  geom_point(data=data.frame(err1=log10(c(oof[[1]])),err2=log10(c(oof[[2]]))), aes(x=err1,y=err2),col="red")
 
 # 6. Compare estimated and true paternities
 mismatch_proportion <- sum(paternity_vector_to_adjacency_matrix(estimated_paternity$paternity) != paternity_vector_to_adjacency_matrix(out$offspring_paternity))/length(paternity_vector_to_adjacency_matrix(estimated_paternity$paternity))
