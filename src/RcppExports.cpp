@@ -57,8 +57,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // sample_error_rates_given_paternity
-Rcpp::List sample_error_rates_given_paternity(arma::uvec paternity, arma::ucube offspring_phenotypes, arma::umat maternal_phenotype, std::vector<arma::vec> allele_frequencies, arma::vec dropout_rate, arma::vec mistyping_rate, const unsigned max_iter);
-RcppExport SEXP _sydneyPaternity_sample_error_rates_given_paternity(SEXP paternitySEXP, SEXP offspring_phenotypesSEXP, SEXP maternal_phenotypeSEXP, SEXP allele_frequenciesSEXP, SEXP dropout_rateSEXP, SEXP mistyping_rateSEXP, SEXP max_iterSEXP) {
+Rcpp::List sample_error_rates_given_paternity(arma::uvec paternity, arma::ucube offspring_phenotypes, arma::umat maternal_phenotype, std::vector<arma::vec> allele_frequencies, arma::vec dropout_rate, arma::vec mistyping_rate, const unsigned max_iter, const unsigned global_genotyping_error_rates);
+RcppExport SEXP _sydneyPaternity_sample_error_rates_given_paternity(SEXP paternitySEXP, SEXP offspring_phenotypesSEXP, SEXP maternal_phenotypeSEXP, SEXP allele_frequenciesSEXP, SEXP dropout_rateSEXP, SEXP mistyping_rateSEXP, SEXP max_iterSEXP, SEXP global_genotyping_error_ratesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -69,7 +69,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::vec >::type dropout_rate(dropout_rateSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type mistyping_rate(mistyping_rateSEXP);
     Rcpp::traits::input_parameter< const unsigned >::type max_iter(max_iterSEXP);
-    rcpp_result_gen = Rcpp::wrap(sample_error_rates_given_paternity(paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate, max_iter));
+    Rcpp::traits::input_parameter< const unsigned >::type global_genotyping_error_rates(global_genotyping_error_ratesSEXP);
+    rcpp_result_gen = Rcpp::wrap(sample_error_rates_given_paternity(paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate, max_iter, global_genotyping_error_rates));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -105,17 +106,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// recode_to_contiguous_integers
-arma::uvec recode_to_contiguous_integers(arma::uvec input);
-RcppExport SEXP _sydneyPaternity_recode_to_contiguous_integers(SEXP inputSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::uvec >::type input(inputSEXP);
-    rcpp_result_gen = Rcpp::wrap(recode_to_contiguous_integers(input));
-    return rcpp_result_gen;
-END_RCPP
-}
 // optimize_paternity_given_error_rates
 Rcpp::List optimize_paternity_given_error_rates(arma::uvec paternity, arma::ucube offspring_phenotypes, arma::umat maternal_phenotype, std::vector<arma::vec> allele_frequencies, arma::vec dropout_rate, arma::vec mistyping_rate);
 RcppExport SEXP _sydneyPaternity_optimize_paternity_given_error_rates(SEXP paternitySEXP, SEXP offspring_phenotypesSEXP, SEXP maternal_phenotypeSEXP, SEXP allele_frequenciesSEXP, SEXP dropout_rateSEXP, SEXP mistyping_rateSEXP) {
@@ -132,20 +122,30 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// sample_paternity_given_error_rates
-Rcpp::List sample_paternity_given_error_rates(arma::uvec paternity, arma::ucube offspring_phenotypes, arma::umat maternal_phenotype, std::vector<arma::vec> allele_frequencies, arma::vec dropout_rate, arma::vec mistyping_rate, const unsigned max_iter);
-RcppExport SEXP _sydneyPaternity_sample_paternity_given_error_rates(SEXP paternitySEXP, SEXP offspring_phenotypesSEXP, SEXP maternal_phenotypeSEXP, SEXP allele_frequenciesSEXP, SEXP dropout_rateSEXP, SEXP mistyping_rateSEXP, SEXP max_iterSEXP) {
+// collapse_alleles_and_generate_prior_wrapper
+Rcpp::List collapse_alleles_and_generate_prior_wrapper(arma::ucube offspring_phenotypes, arma::umat maternal_phenotype, const bool add_unsampled_allele);
+RcppExport SEXP _sydneyPaternity_collapse_alleles_and_generate_prior_wrapper(SEXP offspring_phenotypesSEXP, SEXP maternal_phenotypeSEXP, SEXP add_unsampled_alleleSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::uvec >::type paternity(paternitySEXP);
     Rcpp::traits::input_parameter< arma::ucube >::type offspring_phenotypes(offspring_phenotypesSEXP);
     Rcpp::traits::input_parameter< arma::umat >::type maternal_phenotype(maternal_phenotypeSEXP);
-    Rcpp::traits::input_parameter< std::vector<arma::vec> >::type allele_frequencies(allele_frequenciesSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type dropout_rate(dropout_rateSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type mistyping_rate(mistyping_rateSEXP);
-    Rcpp::traits::input_parameter< const unsigned >::type max_iter(max_iterSEXP);
-    rcpp_result_gen = Rcpp::wrap(sample_paternity_given_error_rates(paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate, max_iter));
+    Rcpp::traits::input_parameter< const bool >::type add_unsampled_allele(add_unsampled_alleleSEXP);
+    rcpp_result_gen = Rcpp::wrap(collapse_alleles_and_generate_prior_wrapper(offspring_phenotypes, maternal_phenotype, add_unsampled_allele));
+    return rcpp_result_gen;
+END_RCPP
+}
+// sample_paternity_and_error_rates_from_joint_posterior
+Rcpp::List sample_paternity_and_error_rates_from_joint_posterior(arma::ucube offspring_phenotypes, arma::umat maternal_phenotype, const unsigned number_of_mcmc_samples, const bool use_global_genotyping_error_rates);
+RcppExport SEXP _sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior(SEXP offspring_phenotypesSEXP, SEXP maternal_phenotypeSEXP, SEXP number_of_mcmc_samplesSEXP, SEXP use_global_genotyping_error_ratesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::ucube >::type offspring_phenotypes(offspring_phenotypesSEXP);
+    Rcpp::traits::input_parameter< arma::umat >::type maternal_phenotype(maternal_phenotypeSEXP);
+    Rcpp::traits::input_parameter< const unsigned >::type number_of_mcmc_samples(number_of_mcmc_samplesSEXP);
+    Rcpp::traits::input_parameter< const bool >::type use_global_genotyping_error_rates(use_global_genotyping_error_ratesSEXP);
+    rcpp_result_gen = Rcpp::wrap(sample_paternity_and_error_rates_from_joint_posterior(offspring_phenotypes, maternal_phenotype, number_of_mcmc_samples, use_global_genotyping_error_rates));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -154,12 +154,12 @@ static const R_CallMethodDef CallEntries[] = {
     {"_sydneyPaternity_genotyping_error_model", (DL_FUNC) &_sydneyPaternity_genotyping_error_model, 6},
     {"_sydneyPaternity_genotyping_error_model_class", (DL_FUNC) &_sydneyPaternity_genotyping_error_model_class, 3},
     {"_sydneyPaternity_simulate_genotyping_errors", (DL_FUNC) &_sydneyPaternity_simulate_genotyping_errors, 6},
-    {"_sydneyPaternity_sample_error_rates_given_paternity", (DL_FUNC) &_sydneyPaternity_sample_error_rates_given_paternity, 7},
+    {"_sydneyPaternity_sample_error_rates_given_paternity", (DL_FUNC) &_sydneyPaternity_sample_error_rates_given_paternity, 8},
     {"_sydneyPaternity_paternity_loglikelihood_by_locus", (DL_FUNC) &_sydneyPaternity_paternity_loglikelihood_by_locus, 6},
     {"_sydneyPaternity_paternity_loglikelihood", (DL_FUNC) &_sydneyPaternity_paternity_loglikelihood, 6},
-    {"_sydneyPaternity_recode_to_contiguous_integers", (DL_FUNC) &_sydneyPaternity_recode_to_contiguous_integers, 1},
     {"_sydneyPaternity_optimize_paternity_given_error_rates", (DL_FUNC) &_sydneyPaternity_optimize_paternity_given_error_rates, 6},
-    {"_sydneyPaternity_sample_paternity_given_error_rates", (DL_FUNC) &_sydneyPaternity_sample_paternity_given_error_rates, 7},
+    {"_sydneyPaternity_collapse_alleles_and_generate_prior_wrapper", (DL_FUNC) &_sydneyPaternity_collapse_alleles_and_generate_prior_wrapper, 3},
+    {"_sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior", (DL_FUNC) &_sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior, 4},
     {NULL, NULL, 0}
 };
 

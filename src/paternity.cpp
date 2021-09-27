@@ -5,9 +5,7 @@
 // [[Rcpp::plugins("cpp11")]]
 // [[Rcpp::depends("RcppArmadillo")]]
 
-
-// [[Rcpp::export]]
-arma::uvec recode_to_contiguous_integers (arma::uvec input)
+arma::umat recode_to_contiguous_integers (arma::umat input)
 {
   arma::uvec uniq = arma::unique(input);
   for(unsigned i=0; i<uniq.n_elem; ++i) input.replace(uniq.at(i), i);
@@ -187,7 +185,7 @@ arma::uvec simulate_genotyping_errors
   return arma::uvec{{0,0}};
 }
 
-arma::vec sample_error_rates_given_paternity_by_locus
+arma::umat sample_genotyping_errors_given_paternity
  (const arma::uvec& paternity,
   const arma::umat& offspring_phenotypes, 
   const arma::uvec& maternal_phenotype, 
@@ -195,7 +193,8 @@ arma::vec sample_error_rates_given_paternity_by_locus
   const double& dropout_rate, 
   const double& mistyping_rate)
 {
-  // simulate from conditional posterior of offspring and maternal genotypes given phenotypes
+  // simulate from conditional posterior of error events given phenotypes and paternity
+  
   const unsigned number_of_alleles = allele_frequencies.n_elem;
   const arma::uvec fathers = arma::unique(paternity);
   const arma::vec allele_frequencies_normalized = allele_frequencies / arma::accu(allele_frequencies);
@@ -226,7 +225,7 @@ arma::vec sample_error_rates_given_paternity_by_locus
   { 
     for (unsigned v=w; v<number_of_alleles; ++v) // second maternal allele
     {
-      double maternal_genotype_probability = //1; //uniform prior
+      double maternal_genotype_probability = 
         (2.-int(w==v)) * allele_frequencies_normalized[w] * allele_frequencies_normalized[v]; //hwe prior
       double log_halfsib_likelihood = log(maternal_genotype_probability); 
       if (maternal_phenotype.is_finite())
@@ -242,7 +241,7 @@ arma::vec sample_error_rates_given_paternity_by_locus
         arma::uvec offspring_from_father = arma::find(paternity == father);
         for (unsigned u=0; u<number_of_alleles; ++u) // paternal allele
         {
-          double paternal_genotype_probability = //1; //uniform prior
+          double paternal_genotype_probability = 
             allele_frequencies_normalized[u]; //hwe prior
           double log_fullsib_likelihood = log(paternal_genotype_probability);
           for (auto offspring : offspring_from_father)
@@ -284,7 +283,7 @@ arma::vec sample_error_rates_given_paternity_by_locus
     arma::uvec offspring_from_father = arma::find(paternity == father);
     for (unsigned u=0; u<number_of_alleles; ++u) // paternal allele
     {
-      double paternal_genotype_probability = //1.; //uniform prior
+      double paternal_genotype_probability = 
           allele_frequencies_normalized[u]; //hwe prior
       double log_fullsib_likelihood = log(paternal_genotype_probability);
       for (auto offspring : offspring_from_father)
@@ -349,12 +348,15 @@ arma::vec sample_error_rates_given_paternity_by_locus
           offspring_genotypes.at(1,sib), number_of_alleles, dropout_rate, mistyping_rate);
     }
   }
-  double new_dropout_error = // a single dropout can occur when the genotype is heterozygous
-    0.5 * R::rbeta(1. + counts_of_errors[0], 1. + sampled_heterozygotes - counts_of_errors[0]);
-  double new_mistyping_error = // both alleles can be mistyped per genotype regardless of zygosity
-    R::rbeta(1. + counts_of_errors[1], 1. + 2.*sampled_phenotypes - counts_of_errors[1]);
 
-  return arma::vec({new_dropout_error, new_mistyping_error});
+  ////now doing the rate sampling outside
+  //double new_dropout_error = // a single dropout can occur when the genotype is heterozygous
+  //  0.5 * R::rbeta(1. + counts_of_errors[0], 1. + sampled_heterozygotes - counts_of_errors[0]);
+  //double new_mistyping_error = // both alleles can be mistyped per genotype regardless of zygosity
+  //  R::rbeta(1. + counts_of_errors[1], 1. + 2.*sampled_phenotypes - counts_of_errors[1]);
+
+  return arma::umat({{counts_of_errors[0], sampled_heterozygotes - counts_of_errors[0]},
+                     {counts_of_errors[1], 2*sampled_phenotypes - counts_of_errors[1]}});
 }
 
 // [[Rcpp::export]]
@@ -365,8 +367,11 @@ Rcpp::List sample_error_rates_given_paternity
   std::vector<arma::vec> allele_frequencies,
   arma::vec dropout_rate,
   arma::vec mistyping_rate,
-  const unsigned max_iter = 1000)
+  const unsigned max_iter = 1000,
+  const unsigned global_genotyping_error_rates = false)
 {
+  //TODO make this generate AF prior, initialize stuff as for larger sampling routine
+  
   paternity = recode_to_contiguous_integers(paternity);
   const unsigned number_of_loci = allele_frequencies.size();
 
@@ -380,13 +385,24 @@ Rcpp::List sample_error_rates_given_paternity
 
   for (unsigned iter=0; iter<max_iter; ++iter)
   {
+    arma::umat global_error_counts = arma::zeros<arma::umat>(2,2);
     for (unsigned locus=0; locus<number_of_loci; ++locus)
     {
-      arma::vec new_rates =
-        sample_error_rates_given_paternity_by_locus(paternity, offspring_phenotypes.slice(locus), 
+      arma::umat error_counts =
+        sample_genotyping_errors_given_paternity(paternity, offspring_phenotypes.slice(locus), 
             maternal_phenotype.col(locus), allele_frequencies[locus], dropout_rate[locus], mistyping_rate[locus]);
-      dropout_rate[locus] = new_rates[0];
-      mistyping_rate[locus] = new_rates[1];
+      if (global_genotyping_error_rates)
+      {
+        global_error_counts += error_counts;
+      } else {
+        dropout_rate[locus] = 0.5 * R::rbeta(1. + error_counts.at(0,0), 1. + error_counts.at(0,1));
+        mistyping_rate[locus] = R::rbeta(1. + error_counts.at(1,0), 1. + error_counts.at(1,1));
+      }
+    }
+    if (global_genotyping_error_rates)
+    {
+        dropout_rate.fill(0.5 * R::rbeta(1. + global_error_counts.at(0,0), 1. + global_error_counts.at(0,1)));
+        mistyping_rate.fill(R::rbeta(1. + global_error_counts.at(1,0), 1. + global_error_counts.at(1,1)));
     }
     dropout_rate_samples.col(iter) = dropout_rate;
     mistyping_rate_samples.col(iter) = mistyping_rate;
@@ -409,6 +425,7 @@ double paternity_loglikelihood_by_locus
   // likelihood of offspring paternity given offspring phenotypes, maternal phenotype, haplodiploidy
   // modified from Eqs 3 & 4 in Wang 2004 Genetics
   const unsigned number_of_alleles = allele_frequencies.n_elem;
+  const unsigned number_of_genotypes = number_of_alleles*(number_of_alleles+1)/2;
   const arma::uvec fathers = arma::unique(paternity);
   const arma::vec allele_frequencies_normalized = allele_frequencies / arma::accu(allele_frequencies);
 
@@ -426,7 +443,7 @@ double paternity_loglikelihood_by_locus
   { 
     for (unsigned v=w; v<number_of_alleles; ++v) // second maternal allele
     {
-      double maternal_genotype_probability = //1; //uniform prior
+      double maternal_genotype_probability = 
         (2.-int(w==v)) * allele_frequencies_normalized[w] * allele_frequencies_normalized[v]; //hwe prior
       double log_halfsib_likelihood = log(maternal_genotype_probability); 
       if (maternal_phenotype.is_finite())
@@ -442,7 +459,7 @@ double paternity_loglikelihood_by_locus
         arma::uvec offspring_from_father = arma::find(paternity == father);
         for (unsigned u=0; u<number_of_alleles; ++u) // paternal allele
         {
-          double paternal_genotype_probability = //1.; //uniform prior
+          double paternal_genotype_probability = 
             allele_frequencies_normalized[u]; //hwe prior
           double log_fullsib_likelihood = log(paternal_genotype_probability);
           for (auto offspring : offspring_from_father)
@@ -548,22 +565,70 @@ Rcpp::List optimize_paternity_given_error_rates
       );
 }
 
+std::vector<arma::vec> collapse_alleles_and_generate_genotype_prior
+ (arma::ucube& offspring_phenotypes, 
+  arma::umat& maternal_phenotype,
+  const bool add_unsampled_allele = true)
+{
+  // recodes alleles into contiguous integers, collapses out-of-sample alleles, returns allele frequency prior
+  const unsigned num_loci = offspring_phenotypes.n_slices;
+  if (maternal_phenotype.n_cols != num_loci) Rcpp::stop("offspring and maternal phenotypes must have same number of loci");
+  std::vector<arma::vec> allele_frequencies;
+
+  for (unsigned locus=0; locus<num_loci; ++locus)
+  {
+    arma::uvec vectorised_genotypes = 
+      arma::join_vert(arma::vectorise(offspring_phenotypes.slice(locus)), maternal_phenotype.col(locus));
+    arma::uvec alleles = arma::unique(vectorised_genotypes);
+    for (unsigned i=0; i<alleles.n_elem; ++i)
+    {
+      offspring_phenotypes.slice(locus).replace(alleles.at(i), i);
+      maternal_phenotype.col(locus).replace(alleles.at(i), i);
+    }
+    unsigned number_of_alleles = alleles.n_elem + int(add_unsampled_allele);
+    arma::vec frequencies (number_of_alleles); 
+    frequencies.fill(1./double(number_of_alleles));
+    allele_frequencies.push_back(frequencies); 
+  }
+  return allele_frequencies;
+}
+
 // [[Rcpp::export]]
-Rcpp::List sample_paternity_given_error_rates
- (arma::uvec paternity, 
-  arma::ucube offspring_phenotypes, 
+Rcpp::List collapse_alleles_and_generate_prior_wrapper 
+ (arma::ucube offspring_phenotypes, 
   arma::umat maternal_phenotype,
-  std::vector<arma::vec> allele_frequencies,
-  arma::vec dropout_rate,
-  arma::vec mistyping_rate,
-  const unsigned max_iter)
+  const bool add_unsampled_allele = true)
+{
+  std::vector<arma::vec> out = collapse_alleles_and_generate_genotype_prior(offspring_phenotypes, maternal_phenotype, add_unsampled_allele);
+  return Rcpp::List::create(
+      Rcpp::_["frequencies"] = out,
+      Rcpp::_["offspring"] = offspring_phenotypes,
+      Rcpp::_["maternal"] = maternal_phenotype);
+}
+
+// [[Rcpp::export]]
+Rcpp::List sample_paternity_and_error_rates_from_joint_posterior
+ (arma::ucube offspring_phenotypes, 
+  arma::umat maternal_phenotype,
+  const unsigned number_of_mcmc_samples = 1000,
+  const bool global_genotyping_error_rates = true)
 {
   // samples from posterior distribution with Dirichlet process prior using algorithm 8 from Neal 2000 JCGS with m = 1
-  
-  const arma::vec error_rate_bounds = {0., 0.25};
-  const unsigned num_loci = allele_frequencies.size();
-  const unsigned num_offspring = paternity.n_elem;
-  const double alpha = 1.;
+  const unsigned max_iter = number_of_mcmc_samples;
+  const unsigned num_loci = offspring_phenotypes.n_slices;
+  const unsigned num_offspring = offspring_phenotypes.n_cols;
+
+  // priors (hardcoded for now)
+  const double alpha = 1.; //dirichlet process concentration parameter
+  const arma::vec dropout_rate_prior = {{1.,1.}}; //beta(number of dropout homozygotes, number of heterozygotes)
+  const arma::vec mistyping_rate_prior = {{1.,1.}}; //beta(number of mistypes, number of correct calls)
+  std::vector<arma::vec> allele_frequencies = 
+    collapse_alleles_and_generate_genotype_prior (offspring_phenotypes, maternal_phenotype, true); //creates uniform frequency prior
+
+  // initialize (could draw from prior instead)
+  arma::uvec paternity = arma::ones<arma::uvec>(num_offspring);
+  arma::vec dropout_rate (num_loci); dropout_rate.fill(0.05);
+  arma::vec mistyping_rate (num_loci); mistyping_rate.fill(0.05);
 
   // storage
   arma::umat paternity_samples (num_offspring, max_iter);
@@ -596,24 +661,32 @@ Rcpp::List sample_paternity_given_error_rates
       }
 
       // sample new father
-      Rcpp::IntegerVector possible_fathers (log_likelihood.n_elem);
-      Rcpp::NumericVector paternity_probability (log_likelihood.n_elem);
-      for (unsigned father=0; father<log_likelihood.n_elem; ++father)
-      {
-        possible_fathers[father] = father;
-        paternity_probability[father] = exp(log_likelihood[father]);
-      }
-      Rcpp::IntegerVector draw = Rcpp::sample(possible_fathers, 1, false, paternity_probability);
-      paternity[sib] = draw(0);
-      deviance = -2 * log_likelihood[draw(0)];
-      paternity = recode_to_contiguous_integers(paternity); //why? without this it crawls up if preexsiting singleton is rejected
+      paternity[sib] = sample(arma::exp(log_likelihood));
+      deviance = -2 * log_likelihood[paternity[sib]];
+      paternity = recode_to_contiguous_integers(paternity); 
+      //why recode? indices will increase, if pre-existing singleton is moved to a father with a higher index
     }
 
-    // update error rates
-    // we use data augmention of genotypes:
-    //   Pr(maternal|phenotypes) Pr(paternal|maternal,phenotypes) Pr(offspring|maternal,paternal,phenotypes)
-    // then use data augmentation of error events. 
-    // the update for the error rates is then the usual beta-binomial, except we bound dropout_error at [0, 0.5]
+    // update error rates via data augmentation
+    arma::umat global_error_counts = arma::zeros<arma::umat>(2,2);
+    for (unsigned locus=0; locus<num_loci; ++locus)
+    {
+      arma::umat error_counts =
+        sample_genotyping_errors_given_paternity(paternity, offspring_phenotypes.slice(locus), 
+            maternal_phenotype.col(locus), allele_frequencies[locus], dropout_rate[locus], mistyping_rate[locus]);
+      if (global_genotyping_error_rates)
+      {
+        global_error_counts += error_counts;
+      } else {
+        dropout_rate[locus] = 0.5 * R::rbeta(1. + error_counts.at(0,0), 1. + error_counts.at(0,1));
+        mistyping_rate[locus] = R::rbeta(1. + error_counts.at(1,0), 1. + error_counts.at(1,1));
+      }
+    }
+    if (global_genotyping_error_rates)
+    {
+        dropout_rate.fill(0.5 * R::rbeta(1. + global_error_counts.at(0,0), 1. + global_error_counts.at(0,1)));
+        mistyping_rate.fill(R::rbeta(1. + global_error_counts.at(1,0), 1. + global_error_counts.at(1,1)));
+    }
 
     // store state
     paternity_samples.col(iter) = paternity;
@@ -629,5 +702,5 @@ Rcpp::List sample_paternity_given_error_rates
     Rcpp::_["deviance"] = deviance_samples);
 }
 
-// optimize_error_rates_given_paternity ==> just spit out gradient, do this in R
+// optimize_error_rates_given_paternity ==> do this in R with nelder mead or something
 

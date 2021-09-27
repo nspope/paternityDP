@@ -13,8 +13,8 @@ simulate_genotyping_errors <- function(phenotype, genotype0, genotype1, number_o
     .Call(`_sydneyPaternity_simulate_genotyping_errors`, phenotype, genotype0, genotype1, number_of_alleles, dropout_rate, mistyping_rate)
 }
 
-sample_error_rates_given_paternity <- function(paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate, max_iter = 1000L) {
-    .Call(`_sydneyPaternity_sample_error_rates_given_paternity`, paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate, max_iter)
+sample_error_rates_given_paternity <- function(paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate, max_iter = 1000L, global_genotyping_error_rates = FALSE) {
+    .Call(`_sydneyPaternity_sample_error_rates_given_paternity`, paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate, max_iter, global_genotyping_error_rates)
 }
 
 paternity_loglikelihood_by_locus <- function(paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate) {
@@ -25,15 +25,15 @@ paternity_loglikelihood <- function(paternity, offspring_phenotypes, maternal_ph
     .Call(`_sydneyPaternity_paternity_loglikelihood`, paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate)
 }
 
-recode_to_contiguous_integers <- function(input) {
-    .Call(`_sydneyPaternity_recode_to_contiguous_integers`, input)
-}
-
 optimize_paternity_given_error_rates <- function(paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate) {
     .Call(`_sydneyPaternity_optimize_paternity_given_error_rates`, paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate)
 }
 
-sample_paternity_given_error_rates <- function(paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate, max_iter) {
-    .Call(`_sydneyPaternity_sample_paternity_given_error_rates`, paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate, max_iter)
+collapse_alleles_and_generate_prior_wrapper <- function(offspring_phenotypes, maternal_phenotype, add_unsampled_allele = TRUE) {
+    .Call(`_sydneyPaternity_collapse_alleles_and_generate_prior_wrapper`, offspring_phenotypes, maternal_phenotype, add_unsampled_allele)
+}
+
+sample_paternity_and_error_rates_from_joint_posterior <- function(offspring_phenotypes, maternal_phenotype, number_of_mcmc_samples = 1000L, use_global_genotyping_error_rates = TRUE) {
+    .Call(`_sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior`, offspring_phenotypes, maternal_phenotype, number_of_mcmc_samples, use_global_genotyping_error_rates)
 }
 
