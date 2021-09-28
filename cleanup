@@ -1,4 +1,4 @@
 #!/bin/sh
 
-rm -f config.* src/Makevars src/*.o src/*.so inst/include/RcppArmadilloConfigGenerated.h
+rm -f config.* src/Makevars src/*.o src/*.so
 rm -rf autom4te*
