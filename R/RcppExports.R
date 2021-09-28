@@ -17,8 +17,8 @@ sample_error_rates_given_paternity <- function(paternity, offspring_phenotypes, 
     .Call(`_sydneyPaternity_sample_error_rates_given_paternity`, paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate, max_iter, global_genotyping_error_rates)
 }
 
-paternity_loglikelihood_by_locus <- function(paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate) {
-    .Call(`_sydneyPaternity_paternity_loglikelihood_by_locus`, paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate)
+missing_data_problem <- function(input) {
+    .Call(`_sydneyPaternity_missing_data_problem`, input)
 }
 
 paternity_loglikelihood <- function(paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate) {
@@ -29,11 +29,11 @@ optimize_paternity_given_error_rates <- function(paternity, offspring_phenotypes
     .Call(`_sydneyPaternity_optimize_paternity_given_error_rates`, paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate)
 }
 
-collapse_alleles_and_generate_prior_wrapper <- function(offspring_phenotypes, maternal_phenotype, add_unsampled_allele = TRUE) {
-    .Call(`_sydneyPaternity_collapse_alleles_and_generate_prior_wrapper`, offspring_phenotypes, maternal_phenotype, add_unsampled_allele)
+collapse_alleles_and_generate_prior_wrapper <- function(phenotypes, mother = 1L, add_unsampled_allele = TRUE) {
+    .Call(`_sydneyPaternity_collapse_alleles_and_generate_prior_wrapper`, phenotypes, mother, add_unsampled_allele)
 }
 
-sample_paternity_and_error_rates_from_joint_posterior <- function(offspring_phenotypes, maternal_phenotype, number_of_mcmc_samples = 1000L, use_global_genotyping_error_rates = TRUE) {
-    .Call(`_sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior`, offspring_phenotypes, maternal_phenotype, number_of_mcmc_samples, use_global_genotyping_error_rates)
+sample_paternity_and_error_rates_from_joint_posterior <- function(phenotypes, mother = 1L, number_of_mcmc_samples = 1000L, global_genotyping_error_rates = TRUE) {
+    .Call(`_sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior`, phenotypes, mother, number_of_mcmc_samples, global_genotyping_error_rates)
 }
 

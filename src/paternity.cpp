@@ -221,14 +221,14 @@ arma::umat sample_genotyping_errors_given_paternity
   arma::vec maternal_genotype_posterior (number_of_genotypes);
   arma::umat possible_maternal_genotypes (2, number_of_genotypes);
   unsigned genotype = 0;
-  for (unsigned w=0; w<number_of_alleles; ++w) // first maternal allele 
+  for (unsigned w=1; w<=number_of_alleles; ++w) // first maternal allele 
   { 
-    for (unsigned v=w; v<number_of_alleles; ++v) // second maternal allele
+    for (unsigned v=w; v<=number_of_alleles; ++v) // second maternal allele
     {
       double maternal_genotype_probability = 
-        (2.-int(w==v)) * allele_frequencies_normalized[w] * allele_frequencies_normalized[v]; //hwe prior
+        (2.-int(w==v)) * allele_frequencies_normalized[w-1] * allele_frequencies_normalized[v-1]; //hwe prior
       double log_halfsib_likelihood = log(maternal_genotype_probability); 
-      if (maternal_phenotype.is_finite())
+      if (arma::prod(maternal_phenotype))
       {
         double maternal_phenotype_probability = 
           genotyping_error_model(maternal_phenotype, w, v, number_of_alleles, dropout_rate, mistyping_rate);
@@ -239,15 +239,15 @@ arma::umat sample_genotyping_errors_given_paternity
         double fullsib_likelihood = 0.;
         double running_maximum = -arma::datum::inf;
         arma::uvec offspring_from_father = arma::find(paternity == father);
-        for (unsigned u=0; u<number_of_alleles; ++u) // paternal allele
+        for (unsigned u=1; u<=number_of_alleles; ++u) // paternal allele
         {
           double paternal_genotype_probability = 
-            allele_frequencies_normalized[u]; //hwe prior
+            allele_frequencies_normalized[u-1]; //hwe prior
           double log_fullsib_likelihood = log(paternal_genotype_probability);
           for (auto offspring : offspring_from_father)
           {
             arma::uvec offspring_phenotype = offspring_phenotypes.col(offspring);
-            if (offspring_phenotype.is_finite()) { 
+            if (arma::prod(offspring_phenotype)) { 
               double offspring_phenotype_probability = // Mendelian segregation probs * phenotype probabilities
                 0.5 * genotyping_error_model(offspring_phenotype, w, u, number_of_alleles, dropout_rate, mistyping_rate) + 
                 0.5 * genotyping_error_model(offspring_phenotype, v, u, number_of_alleles, dropout_rate, mistyping_rate); 
@@ -281,22 +281,22 @@ arma::umat sample_genotyping_errors_given_paternity
   for (auto father : fathers)
   {
     arma::uvec offspring_from_father = arma::find(paternity == father);
-    for (unsigned u=0; u<number_of_alleles; ++u) // paternal allele
+    for (unsigned u=1; u<=number_of_alleles; ++u) // paternal allele
     {
       double paternal_genotype_probability = 
-          allele_frequencies_normalized[u]; //hwe prior
+          allele_frequencies_normalized[u-1]; //hwe prior
       double log_fullsib_likelihood = log(paternal_genotype_probability);
       for (auto offspring : offspring_from_father)
       {
         arma::uvec offspring_phenotype = offspring_phenotypes.col(offspring);
-        if (offspring_phenotype.is_finite()) { 
+        if (arma::prod(offspring_phenotype)) { 
           double offspring_phenotype_probability = // Mendelian segregation probs * phenotype probabilities
             0.5 * genotyping_error_model(offspring_phenotype, maternal_genotype[0], u, number_of_alleles, dropout_rate, mistyping_rate) + 
             0.5 * genotyping_error_model(offspring_phenotype, maternal_genotype[1], u, number_of_alleles, dropout_rate, mistyping_rate); 
           log_fullsib_likelihood += log(offspring_phenotype_probability);
         }
       }
-      paternal_genotype_posterior[u] = log_fullsib_likelihood;
+      paternal_genotype_posterior[u-1] = log_fullsib_likelihood;
     }
     paternal_genotype_posterior -= paternal_genotype_posterior.max();
     paternal_genotypes.at(father) = sample(arma::exp(paternal_genotype_posterior));
@@ -311,7 +311,7 @@ arma::umat sample_genotyping_errors_given_paternity
     for (unsigned i=0; i<2; ++i)
     {
       offspring_genotype_posterior[i] = log(0.5); //Mendelian segregation
-      if (offspring_phenotype.is_finite()) { 
+      if (arma::prod(offspring_phenotype)) { 
         offspring_genotype_posterior[i] += 
           log(genotyping_error_model(offspring_phenotype, maternal_genotype[i], 
                 paternal_genotypes.at(paternity.at(sib)), number_of_alleles, dropout_rate, mistyping_rate));
@@ -329,10 +329,12 @@ arma::umat sample_genotyping_errors_given_paternity
   unsigned sampled_phenotypes = 0;
   unsigned sampled_heterozygotes = 0;
   arma::uvec counts_of_errors = {0,0}; //dropouts, mistypes
-  if (maternal_phenotype.is_finite())
+  //arma::umat error_counts (2, paternity.n_elem + 1, arma::fill::zeros); //could store this to see where errors are likely
+  if (arma::prod(maternal_phenotype))
   {
     sampled_phenotypes++;
     if (maternal_genotype[0] != maternal_genotype[1]) sampled_heterozygotes++;
+    //error_counts.col(paternity.n_elem + 1) = ...;
     counts_of_errors += 
       simulate_genotyping_errors(maternal_phenotype, maternal_genotype[0], 
           maternal_genotype[1], number_of_alleles, dropout_rate, mistyping_rate);
@@ -340,9 +342,10 @@ arma::umat sample_genotyping_errors_given_paternity
   for (unsigned sib=0; sib<paternity.n_elem; ++sib)
   {
     arma::uvec offspring_phenotype = offspring_phenotypes.col(sib);
-    if (offspring_phenotype.is_finite()) { 
+    if (arma::prod(offspring_phenotype)) { 
       sampled_phenotypes++;
       if (offspring_genotypes.at(0,sib) != offspring_genotypes.at(1,sib)) sampled_heterozygotes++;
+      //error_counts.col(sib) = ...;
       counts_of_errors += 
         simulate_genotyping_errors(offspring_phenotype, offspring_genotypes.at(0,sib), 
           offspring_genotypes.at(1,sib), number_of_alleles, dropout_rate, mistyping_rate);
@@ -413,7 +416,6 @@ Rcpp::List sample_error_rates_given_paternity
       Rcpp::_["mistyping_rate"] = mistyping_rate_samples);
 }
 
-// [[Rcpp::export]]
 double paternity_loglikelihood_by_locus 
  (const arma::uvec& paternity,
   const arma::umat& offspring_phenotypes, 
@@ -439,14 +441,14 @@ double paternity_loglikelihood_by_locus
 
   double halfsib_likelihood = 0.;
   double halfsib_running_maximum = -arma::datum::inf;
-  for (unsigned w=0; w<number_of_alleles; ++w) // first maternal allele 
+  for (unsigned w=1; w<=number_of_alleles; ++w) // first maternal allele 
   { 
-    for (unsigned v=w; v<number_of_alleles; ++v) // second maternal allele
+    for (unsigned v=w; v<=number_of_alleles; ++v) // second maternal allele
     {
       double maternal_genotype_probability = 
-        (2.-int(w==v)) * allele_frequencies_normalized[w] * allele_frequencies_normalized[v]; //hwe prior
+        (2.-int(w==v)) * allele_frequencies_normalized[w-1] * allele_frequencies_normalized[v-1]; //hwe prior
       double log_halfsib_likelihood = log(maternal_genotype_probability); 
-      if (maternal_phenotype.is_finite())
+      if (arma::prod(maternal_phenotype))
       {
         double maternal_phenotype_probability = 
           genotyping_error_model(maternal_phenotype, w, v, number_of_alleles, dropout_rate, mistyping_rate);
@@ -457,20 +459,20 @@ double paternity_loglikelihood_by_locus
         double fullsib_likelihood = 0.;
         double fullsib_running_maximum = -arma::datum::inf;
         arma::uvec offspring_from_father = arma::find(paternity == father);
-        for (unsigned u=0; u<number_of_alleles; ++u) // paternal allele
+        for (unsigned u=1; u<=number_of_alleles; ++u) // paternal allele
         {
           double paternal_genotype_probability = 
-            allele_frequencies_normalized[u]; //hwe prior
+            allele_frequencies_normalized[u-1]; //hwe prior
           double log_fullsib_likelihood = log(paternal_genotype_probability);
           for (auto offspring : offspring_from_father)
           {
             arma::uvec offspring_phenotype = offspring_phenotypes.col(offspring);
-            if (offspring_phenotype.is_finite()) { 
+            if (arma::prod(offspring_phenotype)) { 
               double offspring_phenotype_probability = // Mendelian segregation probs * phenotype probabilities
                 0.5 * genotyping_error_model(offspring_phenotype, w, u, number_of_alleles, dropout_rate, mistyping_rate) + 
                 0.5 * genotyping_error_model(offspring_phenotype, v, u, number_of_alleles, dropout_rate, mistyping_rate); 
               log_fullsib_likelihood += log(offspring_phenotype_probability);
-            }
+            } 
           }
           if (log_fullsib_likelihood <= fullsib_running_maximum) //underflow protection
           {
@@ -497,6 +499,15 @@ double paternity_loglikelihood_by_locus
 }
 
 // [[Rcpp::export]]
+arma::imat missing_data_problem (arma::imat input)
+{
+  input.t().print("input");
+  arma::ivec input_unique = arma::unique(input);
+  input_unique.t().print("unique");
+  return input;
+}
+
+// [[Rcpp::export]]
 double paternity_loglikelihood 
  (arma::uvec paternity, 
   arma::ucube offspring_phenotypes, 
@@ -511,6 +522,7 @@ double paternity_loglikelihood
   if (offspring_phenotypes.n_slices != number_of_loci) Rcpp::stop("must have offspring phenotypes for each locus");
   if (dropout_rate.n_elem != number_of_loci) Rcpp::stop("must have dropout rates for each locus");
   if (mistyping_rate.n_elem != number_of_loci) Rcpp::stop("must have mistyping rates for each locus");
+
   double log_likelihood = 0.;
   for (unsigned locus=0; locus<number_of_loci; ++locus)
   {
@@ -566,24 +578,20 @@ Rcpp::List optimize_paternity_given_error_rates
 }
 
 std::vector<arma::vec> collapse_alleles_and_generate_genotype_prior
- (arma::ucube& offspring_phenotypes, 
-  arma::umat& maternal_phenotype,
+ (arma::ucube& phenotypes, 
   const bool add_unsampled_allele = true)
 {
-  // recodes alleles into contiguous integers, collapses out-of-sample alleles, returns allele frequency prior
-  const unsigned num_loci = offspring_phenotypes.n_slices;
-  if (maternal_phenotype.n_cols != num_loci) Rcpp::stop("offspring and maternal phenotypes must have same number of loci");
+  // recode alleles into 1-based contiguous integers and return allele frequency prior
+  
+  const unsigned num_loci = phenotypes.n_slices;
   std::vector<arma::vec> allele_frequencies;
 
   for (unsigned locus=0; locus<num_loci; ++locus)
   {
-    arma::uvec vectorised_genotypes = 
-      arma::join_vert(arma::vectorise(offspring_phenotypes.slice(locus)), maternal_phenotype.col(locus));
-    arma::uvec alleles = arma::unique(vectorised_genotypes);
-    for (unsigned i=0; i<alleles.n_elem; ++i)
+    arma::uvec alleles = arma::nonzeros(phenotypes.slice(locus));
+    for (int i=1; i<=alleles.n_elem; ++i)
     {
-      offspring_phenotypes.slice(locus).replace(alleles.at(i), i);
-      maternal_phenotype.col(locus).replace(alleles.at(i), i);
+      phenotypes.slice(locus).replace(alleles.at(i-1), i);
     }
     unsigned number_of_alleles = alleles.n_elem + int(add_unsampled_allele);
     arma::vec frequencies (number_of_alleles); 
@@ -595,11 +603,17 @@ std::vector<arma::vec> collapse_alleles_and_generate_genotype_prior
 
 // [[Rcpp::export]]
 Rcpp::List collapse_alleles_and_generate_prior_wrapper 
- (arma::ucube offspring_phenotypes, 
-  arma::umat maternal_phenotype,
+ (arma::ucube phenotypes, 
+  const unsigned mother = 1,
   const bool add_unsampled_allele = true)
 {
-  std::vector<arma::vec> out = collapse_alleles_and_generate_genotype_prior(offspring_phenotypes, maternal_phenotype, add_unsampled_allele);
+  //TODO right now missing data are zeros but that will not work b/c i use alleles in zero-based indexing
+  //     i think i could make the genotype stuff 1-based. this would be loops for(v=; for(w=; for(u=; then change allele_frequencies[u]
+  //EVERYTHING IS BROKEN -- NO I THINK I FIXED IT
+  std::vector<arma::vec> out = collapse_alleles_and_generate_genotype_prior(phenotypes, add_unsampled_allele);
+  arma::umat maternal_phenotype = phenotypes.tube(arma::span::all, arma::span(mother-1));
+  arma::ucube offspring_phenotypes = phenotypes;
+  offspring_phenotypes.shed_col(mother-1);
   return Rcpp::List::create(
       Rcpp::_["frequencies"] = out,
       Rcpp::_["offspring"] = offspring_phenotypes,
@@ -608,22 +622,34 @@ Rcpp::List collapse_alleles_and_generate_prior_wrapper
 
 // [[Rcpp::export]]
 Rcpp::List sample_paternity_and_error_rates_from_joint_posterior
- (arma::ucube offspring_phenotypes, 
-  arma::umat maternal_phenotype,
+ (arma::ucube phenotypes, 
+  const unsigned mother = 1,
   const unsigned number_of_mcmc_samples = 1000,
   const bool global_genotyping_error_rates = true)
 {
-  // samples from posterior distribution with Dirichlet process prior using algorithm 8 from Neal 2000 JCGS with m = 1
+  // samples from posterior distribution of full sib groups with Dirichlet process prior,
+  // using algorithm 8 from Neal 2000 JCGS with m = 1
+  
+  if (mother > phenotypes.n_cols || mother < 1) Rcpp::stop("1-based index of mother out of range");
+
+  // negative allele codes are treated as missing
+  phenotypes.elem(arma::find(phenotypes == 0)).fill(arma::datum::nan);
+
+  // TODO pass in phenotypes and index of mother, modify "collapse_alleles_and_generate_genotype_prior" to take single input
   const unsigned max_iter = number_of_mcmc_samples;
-  const unsigned num_loci = offspring_phenotypes.n_slices;
-  const unsigned num_offspring = offspring_phenotypes.n_cols;
+  const unsigned num_loci = phenotypes.n_slices;
+  const unsigned num_offspring = phenotypes.n_cols - 1;
 
   // priors (hardcoded for now)
   const double alpha = 1.; //dirichlet process concentration parameter
   const arma::vec dropout_rate_prior = {{1.,1.}}; //beta(number of dropout homozygotes, number of heterozygotes)
   const arma::vec mistyping_rate_prior = {{1.,1.}}; //beta(number of mistypes, number of correct calls)
   std::vector<arma::vec> allele_frequencies = 
-    collapse_alleles_and_generate_genotype_prior (offspring_phenotypes, maternal_phenotype, true); //creates uniform frequency prior
+    collapse_alleles_and_generate_genotype_prior(phenotypes, true); //creates uniform frequency prior
+
+  // split maternal, offspring phenotypes
+  arma::umat maternal_phenotype = phenotypes.tube(arma::span::all, arma::span(mother-1));
+  arma::ucube offspring_phenotypes = phenotypes; offspring_phenotypes.shed_col(mother-1);
 
   // initialize (could draw from prior instead)
   arma::uvec paternity = arma::ones<arma::uvec>(num_offspring);
@@ -661,7 +687,7 @@ Rcpp::List sample_paternity_and_error_rates_from_joint_posterior
       }
 
       // sample new father
-      paternity[sib] = sample(arma::exp(log_likelihood));
+      paternity[sib] = sample(arma::exp(log_likelihood - log_likelihood.max()));
       deviance = -2 * log_likelihood[paternity[sib]];
       paternity = recode_to_contiguous_integers(paternity); 
       //why recode? indices will increase, if pre-existing singleton is moved to a father with a higher index

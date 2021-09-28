@@ -74,19 +74,14 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// paternity_loglikelihood_by_locus
-double paternity_loglikelihood_by_locus(const arma::uvec& paternity, const arma::umat& offspring_phenotypes, const arma::uvec& maternal_phenotype, const arma::vec& allele_frequencies, const double& dropout_rate, const double& mistyping_rate);
-RcppExport SEXP _sydneyPaternity_paternity_loglikelihood_by_locus(SEXP paternitySEXP, SEXP offspring_phenotypesSEXP, SEXP maternal_phenotypeSEXP, SEXP allele_frequenciesSEXP, SEXP dropout_rateSEXP, SEXP mistyping_rateSEXP) {
+// missing_data_problem
+arma::imat missing_data_problem(arma::imat input);
+RcppExport SEXP _sydneyPaternity_missing_data_problem(SEXP inputSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::uvec& >::type paternity(paternitySEXP);
-    Rcpp::traits::input_parameter< const arma::umat& >::type offspring_phenotypes(offspring_phenotypesSEXP);
-    Rcpp::traits::input_parameter< const arma::uvec& >::type maternal_phenotype(maternal_phenotypeSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type allele_frequencies(allele_frequenciesSEXP);
-    Rcpp::traits::input_parameter< const double& >::type dropout_rate(dropout_rateSEXP);
-    Rcpp::traits::input_parameter< const double& >::type mistyping_rate(mistyping_rateSEXP);
-    rcpp_result_gen = Rcpp::wrap(paternity_loglikelihood_by_locus(paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate));
+    Rcpp::traits::input_parameter< arma::imat >::type input(inputSEXP);
+    rcpp_result_gen = Rcpp::wrap(missing_data_problem(input));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -123,29 +118,29 @@ BEGIN_RCPP
 END_RCPP
 }
 // collapse_alleles_and_generate_prior_wrapper
-Rcpp::List collapse_alleles_and_generate_prior_wrapper(arma::ucube offspring_phenotypes, arma::umat maternal_phenotype, const bool add_unsampled_allele);
-RcppExport SEXP _sydneyPaternity_collapse_alleles_and_generate_prior_wrapper(SEXP offspring_phenotypesSEXP, SEXP maternal_phenotypeSEXP, SEXP add_unsampled_alleleSEXP) {
+Rcpp::List collapse_alleles_and_generate_prior_wrapper(arma::ucube phenotypes, const unsigned mother, const bool add_unsampled_allele);
+RcppExport SEXP _sydneyPaternity_collapse_alleles_and_generate_prior_wrapper(SEXP phenotypesSEXP, SEXP motherSEXP, SEXP add_unsampled_alleleSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::ucube >::type offspring_phenotypes(offspring_phenotypesSEXP);
-    Rcpp::traits::input_parameter< arma::umat >::type maternal_phenotype(maternal_phenotypeSEXP);
+    Rcpp::traits::input_parameter< arma::ucube >::type phenotypes(phenotypesSEXP);
+    Rcpp::traits::input_parameter< const unsigned >::type mother(motherSEXP);
     Rcpp::traits::input_parameter< const bool >::type add_unsampled_allele(add_unsampled_alleleSEXP);
-    rcpp_result_gen = Rcpp::wrap(collapse_alleles_and_generate_prior_wrapper(offspring_phenotypes, maternal_phenotype, add_unsampled_allele));
+    rcpp_result_gen = Rcpp::wrap(collapse_alleles_and_generate_prior_wrapper(phenotypes, mother, add_unsampled_allele));
     return rcpp_result_gen;
 END_RCPP
 }
 // sample_paternity_and_error_rates_from_joint_posterior
-Rcpp::List sample_paternity_and_error_rates_from_joint_posterior(arma::ucube offspring_phenotypes, arma::umat maternal_phenotype, const unsigned number_of_mcmc_samples, const bool use_global_genotyping_error_rates);
-RcppExport SEXP _sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior(SEXP offspring_phenotypesSEXP, SEXP maternal_phenotypeSEXP, SEXP number_of_mcmc_samplesSEXP, SEXP use_global_genotyping_error_ratesSEXP) {
+Rcpp::List sample_paternity_and_error_rates_from_joint_posterior(arma::ucube phenotypes, const unsigned mother, const unsigned number_of_mcmc_samples, const bool global_genotyping_error_rates);
+RcppExport SEXP _sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior(SEXP phenotypesSEXP, SEXP motherSEXP, SEXP number_of_mcmc_samplesSEXP, SEXP global_genotyping_error_ratesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::ucube >::type offspring_phenotypes(offspring_phenotypesSEXP);
-    Rcpp::traits::input_parameter< arma::umat >::type maternal_phenotype(maternal_phenotypeSEXP);
+    Rcpp::traits::input_parameter< arma::ucube >::type phenotypes(phenotypesSEXP);
+    Rcpp::traits::input_parameter< const unsigned >::type mother(motherSEXP);
     Rcpp::traits::input_parameter< const unsigned >::type number_of_mcmc_samples(number_of_mcmc_samplesSEXP);
-    Rcpp::traits::input_parameter< const bool >::type use_global_genotyping_error_rates(use_global_genotyping_error_ratesSEXP);
-    rcpp_result_gen = Rcpp::wrap(sample_paternity_and_error_rates_from_joint_posterior(offspring_phenotypes, maternal_phenotype, number_of_mcmc_samples, use_global_genotyping_error_rates));
+    Rcpp::traits::input_parameter< const bool >::type global_genotyping_error_rates(global_genotyping_error_ratesSEXP);
+    rcpp_result_gen = Rcpp::wrap(sample_paternity_and_error_rates_from_joint_posterior(phenotypes, mother, number_of_mcmc_samples, global_genotyping_error_rates));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -155,7 +150,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_sydneyPaternity_genotyping_error_model_class", (DL_FUNC) &_sydneyPaternity_genotyping_error_model_class, 3},
     {"_sydneyPaternity_simulate_genotyping_errors", (DL_FUNC) &_sydneyPaternity_simulate_genotyping_errors, 6},
     {"_sydneyPaternity_sample_error_rates_given_paternity", (DL_FUNC) &_sydneyPaternity_sample_error_rates_given_paternity, 8},
-    {"_sydneyPaternity_paternity_loglikelihood_by_locus", (DL_FUNC) &_sydneyPaternity_paternity_loglikelihood_by_locus, 6},
+    {"_sydneyPaternity_missing_data_problem", (DL_FUNC) &_sydneyPaternity_missing_data_problem, 1},
     {"_sydneyPaternity_paternity_loglikelihood", (DL_FUNC) &_sydneyPaternity_paternity_loglikelihood, 6},
     {"_sydneyPaternity_optimize_paternity_given_error_rates", (DL_FUNC) &_sydneyPaternity_optimize_paternity_given_error_rates, 6},
     {"_sydneyPaternity_collapse_alleles_and_generate_prior_wrapper", (DL_FUNC) &_sydneyPaternity_collapse_alleles_and_generate_prior_wrapper, 3},

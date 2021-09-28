@@ -1,3 +1,6 @@
+#TODO: RcppArmadillo bug where missing data is converted to zeros 
+#update: not a bug, there's a technical reason. regardless, now need to explicitely handle conversion. signed integers are OK.
+
 library(sydneyPaternity)
 
 #for reproducible results
@@ -17,7 +20,7 @@ allele_freqs <- list(
                      "b96"=c("238"=0.464,"240"=0.332,"244"=0.045,"246"=0.043,"250"=0.115),
                      "btms0081"=c("307"=0.487,"310"=0.513))
 
-allele_freqs <- lapply(1:4, function(x) {z=rep(1/4,4); names(z) <- 1:length(z); z})#testing
+allele_freqs <- lapply(1:8, function(x) {z=rep(1/4,4); names(z) <- 1:length(z); z})#testing
 
 # set simulation parameters here, all combinations of values will be considered
 grid_of_simulation_parameters <- 
@@ -26,7 +29,7 @@ grid_of_simulation_parameters <-
               error_rates_in_simulation=0.05, #used for simulating data
               error_rates_in_estimation=0.05, #used for estimating from simulated data
               proportion_missing_data=0.1, #use something realistic
-              number_of_offspring=20, 
+              number_of_offspring=100, 
               use_true_allele_freqs=FALSE) #if FALSE use uniform allele freqs for estimation
 
 #run simulations
@@ -54,11 +57,16 @@ out <- simulate_sibling_group(number_of_offspring=number_of_offspring,
 # 1. Here we output simulation to a file. Not necessary b/c simulation is already an R object, but this
 #    allows us to write the rest of the example like you are working with your actual data.
 #    The first row in the data is the maternal genotype, this is important later on.
+#list_of_genotype_arrays_to_txt(list(out$observed_maternal_genotype, out$observed_offspring_genotypes), 
 list_of_genotype_arrays_to_txt(list(out$observed_maternal_genotype, out$observed_offspring_genotypes), 
                                filename = "example_data.txt")
 
 # 2. Load the genotype data we just saved into an array
 my_genotype_data <- genotype_array_from_txt("example_data.txt")
+my_genotype_data_sucks <- as.numeric(my_genotype_data) #TODO
+my_genotype_data <- array(my_genotype_data_sucks, dim(my_genotype_data))
+
+sydneyPaternity:::collapse_alleles_and_generate_prior_wrapper(my_genotype_data)
 
 # 3. Recode alleles to integers (uses positions in "allele_freqs" as integer codes)
 my_genotype_data_recoded <- recode_genotype_array_to_integers(my_genotype_data, allele_freqs)
@@ -73,19 +81,19 @@ starting_paternity <- rep(1, dim(offspring_genotypes)[2]) #starting state for op
 starting_allele_freqs <- if(use_true_allele_freqs) allele_freqs else lapply(allele_freqs, function(x) rep(1/length(x), length(x)))
 dropout_rates <- rep(error_rates_in_estimation, length(allele_freqs)) #for now just set to true values (used in simulations)
 mistyping_rates <- rep(error_rates_in_estimation, length(allele_freqs)) #for now just set to true values (used in simulations)
-estimated_paternity <- optimize_paternity_given_error_rates(starting_paternity,offspring_genotypes,maternal_genotype,starting_allele_freqs,dropout_rates,mistyping_rates)
-estimated_errors <- sydneyPaternity:::sample_error_rates_given_paternity(estimated_paternity$paternity,offspring_genotypes,maternal_genotype,starting_allele_freqs,dropout_rates,mistyping_rates)
+#estimated_paternity <- optimize_paternity_given_error_rates(starting_paternity,offspring_genotypes,maternal_genotype,starting_allele_freqs,dropout_rates,mistyping_rates)
+#estimated_errors <- sydneyPaternity:::sample_error_rates_given_paternity(estimated_paternity$paternity,offspring_genotypes,maternal_genotype,starting_allele_freqs,dropout_rates,mistyping_rates)
 
-locus <- 2
+#when there is missing data things start to go wrong :-|
 grr <- expand.grid(err1=seq(-4,-0.5,0.1),err2=seq(-4,-0.5,0.1))
-grr$ll <- sapply(1:nrow(grr), function(i){
-  sydneyPaternity:::paternity_loglikelihood_by_locus(out$offspring_paternity-1,offspring_genotypes[,,locus],maternal_genotype[,locus],starting_allele_freqs[[locus]],10^(grr[i,1]),10^(grr[i,2]))
+grr$ll <- sapply(1:1, function(i) {#nrow(grr), function(i){
+  sydneyPaternity:::paternity_loglikelihood(out$offspring_paternity-1,offspring_genotypes,maternal_genotype,starting_allele_freqs,rep(10^(grr[i,1]),length(starting_allele_freqs)),rep(10^(grr[i,2]),length(starting_allele_freqs)))
 })
-oof <- sydneyPaternity:::sample_error_rates_given_paternity(out$offspring_paternity,offspring_genotypes[,,locus,drop=F],maternal_genotype[,locus,drop=F],starting_allele_freqs[locus],dropout_rates[locus],mistyping_rates[locus])
+oof <- sydneyPaternity:::sample_error_rates_given_paternity(out$offspring_paternity,offspring_genotypes,maternal_genotype,starting_allele_freqs,dropout_rates,mistyping_rates,1000,TRUE)
 library(ggplot2)
 ggplot(grr) + 
-  geom_tile(aes(x=err1,y=err2,fill=exp(ll-max(ll)))) + #this works,sampling doesn't always seem to :-|
-  geom_point(data=data.frame(err1=log10(c(oof[[1]])),err2=log10(c(oof[[2]]))), aes(x=err1,y=err2),col="red",alpha=0.2,size=1)
+  geom_tile(aes(x=err1,y=err2,fill=exp(ll-max(ll)))) + 
+  geom_point(data=data.frame(err1=log10(c(oof[[1]][1,])),err2=log10(c(oof[[2]][1,]))), aes(x=err1,y=err2),col="red",alpha=0.2,size=1)
 
 # 6. Compare estimated and true paternities
 mismatch_proportion <- sum(paternity_vector_to_adjacency_matrix(estimated_paternity$paternity) != paternity_vector_to_adjacency_matrix(out$offspring_paternity))/length(paternity_vector_to_adjacency_matrix(estimated_paternity$paternity))
@@ -107,13 +115,8 @@ ggplot(simulation_results) + geom_boxplot(aes(x=num_fathers, y=diff_in_fathers, 
 set.seed(1)
 mcmc_paternity <- 
   sample_paternity_and_error_rates_from_joint_posterior(
-    starting_paternity,
     offspring_genotypes,
-    maternal_genotype,
-    starting_allele_freqs,
-    dropout_rates,
-    mistyping_rates,
-    max_iter = 1000)
+    maternal_genotype)
 mcmc_number_of_fathers <- apply(mcmc_paternity$paternity,2,function(x) length(unique(x)))
 
 library(ggplot2)

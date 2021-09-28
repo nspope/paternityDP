@@ -1,2 +1,4 @@
 *.o
 *.so
+Makevars
+Makevars.win
