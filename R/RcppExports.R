@@ -13,8 +13,8 @@ simulate_genotyping_errors <- function(phenotype, genotype0, genotype1, number_o
     .Call(`_sydneyPaternity_simulate_genotyping_errors`, phenotype, genotype0, genotype1, number_of_alleles, dropout_rate, mistyping_rate)
 }
 
-sample_error_rates_given_paternity <- function(paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate, max_iter = 1000L, global_genotyping_error_rates = FALSE) {
-    .Call(`_sydneyPaternity_sample_error_rates_given_paternity`, paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate, max_iter, global_genotyping_error_rates)
+sample_error_rates_given_paternity <- function(phenotypes, paternity, mother = 1L, number_of_mcmc_samples = 1000L, global_genotyping_error_rates = FALSE, random_allele_frequencies = TRUE) {
+    .Call(`_sydneyPaternity_sample_error_rates_given_paternity`, phenotypes, paternity, mother, number_of_mcmc_samples, global_genotyping_error_rates, random_allele_frequencies)
 }
 
 missing_data_problem <- function(input) {
@@ -25,11 +25,15 @@ paternity_loglikelihood <- function(paternity, offspring_phenotypes, maternal_ph
     .Call(`_sydneyPaternity_paternity_loglikelihood`, paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate)
 }
 
-optimize_paternity_given_error_rates <- function(paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate) {
-    .Call(`_sydneyPaternity_optimize_paternity_given_error_rates`, paternity, offspring_phenotypes, maternal_phenotype, allele_frequencies, dropout_rate, mistyping_rate)
+optimize_paternity_given_error_rates <- function(phenotypes, dropout_rate, mistyping_rate, mother = 1L) {
+    .Call(`_sydneyPaternity_optimize_paternity_given_error_rates`, phenotypes, dropout_rate, mistyping_rate, mother)
 }
 
-collapse_alleles_and_generate_prior_wrapper <- function(phenotypes, mother = 1L, add_unsampled_allele = TRUE) {
+loglikelihood_of_error_rates_given_paternity <- function(phenotypes, paternity, grid_of_error_rates, mother = 1L) {
+    .Call(`_sydneyPaternity_loglikelihood_of_error_rates_given_paternity`, phenotypes, paternity, grid_of_error_rates, mother)
+}
+
+collapse_alleles_and_generate_prior_wrapper <- function(phenotypes, mother = 1L, add_unsampled_allele = FALSE) {
     .Call(`_sydneyPaternity_collapse_alleles_and_generate_prior_wrapper`, phenotypes, mother, add_unsampled_allele)
 }
 
