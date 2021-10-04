@@ -234,6 +234,9 @@ genotype_array_from_txt <- function(filename, missing_data = "NA")
     }
   }
   out[out==missing_data] <- NA
+  out_raw <- as.numeric(out)
+  out <- array(out_raw, dim(out))
+  dimnames(out) <- list(paste0("allele",1:2), rownames(tb), colnames(tb))
   out
 }
 
@@ -270,3 +273,61 @@ paternity_vector_to_adjacency_matrix <- function(pat)
 {
   1.*(as.matrix(dist(pat))==0)
 }
+
+plot_genotyping_errors <- function(mcmc_paternity, my_genotype_data) 
+{
+  library(ggplot2)
+
+  mistyping_errors <- mcmc_paternity$mistyping_errors
+  rownames(mistyping_errors) <- dimnames(my_genotype_data)[[2]]
+  colnames(mistyping_errors) <- dimnames(my_genotype_data)[[3]]
+  mistyping_errors <- as.data.frame.table(mistyping_errors)
+  colnames(mistyping_errors) <- c("Locus", "Sample", "Errors")
+  mistyping_errors$type <- "Mistyping"
+
+  dropout_errors <- mcmc_paternity$dropout_errors
+  rownames(dropout_errors) <- dimnames(my_genotype_data)[[2]]
+  colnames(dropout_errors) <- dimnames(my_genotype_data)[[3]]
+  dropout_errors <- as.data.frame.table(dropout_errors)
+  colnames(dropout_errors) <- c("Locus", "Sample", "Errors")
+  dropout_errors$type <- "Dropout"
+
+  ggplot(rbind(mistyping_errors,dropout_errors)) +
+    geom_tile(aes(x=Sample, y=Locus, fill=Errors)) +
+    theme_bw() + 
+    theme(text=element_text(family="Garamond"), 
+          axis.text.x=element_text(angle=90),
+          panel.grid=element_blank(), legend.position="bottom") +
+xlab("Locus") + ylab("Sample") + 
+guides(fill=guide_colorbar("E[# Errors]", direction="horizontal", title.position="top")) +
+scale_fill_gradient(low="white", high="firebrick") +
+scale_x_discrete(expand=c(0,0)) +
+scale_y_discrete(expand=c(0,0)) +
+facet_grid(~type)
+}
+
+plot_posterior_number_of_fathers <- function(mcmc_paternity)
+{
+  library(ggplot2)
+  mcmc_number_of_fathers <- mcmc_paternity$number_of_fathers
+  ggplot(data.frame(x=mcmc_number_of_fathers)) + theme_bw() + theme(panel.grid=element_blank()) +
+    geom_histogram(aes(x=mcmc_number_of_fathers, y=..count../length(mcmc_number_of_fathers)), binwidth=1, fill="gray90", color="black") +
+    xlim(0,20) + xlab("Estimated number of fathers for colony") + ylab("Posterior probability")
+}
+
+plot_posterior <- function(mcmc_paternity)
+{
+  library(ggplot2)
+  ggplot(data.frame(n_fathers=mcmc_paternity$number_of_fathers, mistyping_rate=mcmc_paternity$mistyping_rate[1,])) +
+    geom_bin2d(aes(x=mistyping_rate,y=n_fathers,fill=..count../1000), binwidth=c(0.005,1)) +
+    theme_bw() + 
+    theme(text=element_text(family="Garamond"), panel.grid=element_blank(), legend.position="bottom") +
+    xlab("Proportion of erroneous phenotypes") +
+    ylab("Number of fathers in sample") +
+    guides(fill=guide_colorbar("Posterior probability", direction="horizontal", title.position="top")) +
+    scale_x_continuous(expand=c(0,0), limits=c(0,0.3)) +
+    scale_y_continuous(expand=c(0,0), limits=c(-1,15),breaks=seq(0.5,14.5,1),labels=1:15)
+}
+
+
+

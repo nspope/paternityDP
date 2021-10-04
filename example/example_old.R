@@ -20,7 +20,7 @@ allele_freqs <- list(
                      "b96"=c("238"=0.464,"240"=0.332,"244"=0.045,"246"=0.043,"250"=0.115),
                      "btms0081"=c("307"=0.487,"310"=0.513))
 
-allele_freqs <- lapply(1:10, function(x) {z=rep(1/6,6); names(z) <- 10+1:length(z); z})#testing
+allele_freqs <- lapply(1:4, function(x) {z=rep(1/4,4); names(z) <- 10+1:length(z); z})#testing
 
 # set simulation parameters here, all combinations of values will be considered
 grid_of_simulation_parameters <- 
@@ -50,7 +50,7 @@ num_loci <- length(allele_freqs)
 out <- simulate_sibling_group(number_of_offspring=number_of_offspring,
                               proportion_of_sperm_per_father=rep(1/num_fathers,num_fathers),
                               allele_frequencies_per_msat=allele_freqs,
-                              rate_of_allelic_dropout_per_locus=rep(error_rates_in_simulation*2,num_loci),
+                              rate_of_allelic_dropout_per_locus=rep(error_rates_in_simulation,num_loci),
                               rate_of_allelic_mistyping_per_locus=rep(error_rates_in_simulation,num_loci),
                               probability_of_missing_data=proportion_missing_data)
 
@@ -71,7 +71,7 @@ offspring_genotypes <- ehh[[2]]
 allele_freqs <- ehh[[1]] #this is tricky. basically we restrict possible alleles to those in sample.
 
 # 5. Find MLE of paternity vector
-dropout_rates <- rep(2*error_rates_in_estimation, length(allele_freqs)) #for now just set to true values (used in simulations)
+dropout_rates <- rep(error_rates_in_estimation, length(allele_freqs)) #for now just set to true values (used in simulations)
 mistyping_rates <- rep(error_rates_in_estimation, length(allele_freqs)) #for now just set to true values (used in simulations)
 estimated_paternity <- optimize_paternity_given_error_rates(my_genotype_data,dropout_rates,mistyping_rates)
 #estimated_errors <- sydneyPaternity:::sample_error_rates_given_paternity(my_genotype_data,out$offspring_paternity, global_genotyping_error_rates=TRUE)
@@ -105,8 +105,10 @@ ggplot(simulation_results) + geom_boxplot(aes(x=num_fathers, y=diff_in_fathers, 
 # this is super important for your actual data
 set.seed(1)
 mcmc_paternity <- 
-  sample_paternity_and_error_rates_from_joint_posterior(my_genotype_data)
-mcmc_number_of_fathers <- apply(mcmc_paternity$paternity,2,function(x) length(unique(x)))
+  sample_paternity_and_error_rates_from_joint_posterior(my_genotype_data, number_of_mcmc_samples=1000, concentration=1.)
+mcmc_paternity2 <- 
+  sample_paternity_and_error_rates_from_joint_posterior(my_genotype_data, number_of_mcmc_samples=1000, concentration=0.5)
+mcmc_number_of_fathers <- mcmc_paternity$number_of_fathers
 
 library(ggplot2)
 ggplot(data.frame(x=mcmc_number_of_fathers)) + theme_bw() + theme(panel.grid=element_blank()) +
@@ -120,3 +122,21 @@ library(ggplot2)
 ggplot(data.frame(grid, ll=rowSums(ll))) + geom_tile(aes(x=err1,y=err2,fill=exp(ll-max(ll)))) +
   geom_density2d(data=data.frame(err1=log10(c(mcmc_paternity$dropout_rate[1,])),err2=log10(c(mcmc_paternity$mistyping_rate[1,]))), aes(x=err1,y=err2),col="red") +
   annotate(geom="point", x=log10(2*error_rates_in_simulation), y=log10(error_rates_in_simulation), col="green", size=4) 
+
+library(ggplot2)
+ggplot(data.frame(n_fathers=mcmc_paternity$number_of_fathers, mistyping_rate=mcmc_paternity$mistyping_rate[1,])) +
+       geom_bin2d(aes(x=mistyping_rate,y=n_fathers,fill=..count../1000), binwidth=c(0.005,1)) +
+       annotate(geom="point", x=0.1, y=1.5, size=4, color="coral") +
+       annotate(geom="text", x=0.1, y=2-0.5, size=4, label="Truth", hjust=1.2, color="coral", family="Garamond") +
+       annotate(geom="point", x=0.1, y=length(unique(estimated_paternity$paternity))-0.5, size=4, color="yellow") +
+       annotate(geom="text", x=0.1, y=length(unique(estimated_paternity$paternity))-0.5, size=4, label="MLE", hjust=1.2, color="yellow", family="Garamond") +
+       theme_bw() + 
+       theme(text=element_text(family="Garamond"), panel.grid=element_blank(), legend.position=c(0.8,0.9)) +
+       xlab("Proportion of erroneous phenotypes") +
+       ylab("Number of fathers in sample") +
+       guides(fill=guide_colorbar("Posterior probability", direction="horizontal", title.position="top")) +
+       scale_x_continuous(expand=c(0,0), limits=c(0,0.3)) +
+       scale_y_continuous(expand=c(0,0), limits=c(-1,15),breaks=seq(0.5,14.5,1),labels=1:15)->plt
+     ggsave("joint_posterior.png", plt, height=5, width=6, units="in", dpi=300)
+
+
