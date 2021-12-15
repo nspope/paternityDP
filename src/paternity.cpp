@@ -245,6 +245,8 @@ arma::uvec simulate_genotyping_errors
   return arma::uvec{{0,0}};
 }
 
+// ---------------------------------------------------------------------------- //
+
 std::vector<arma::uvec> sample_genotyping_errors_and_allele_counts_given_paternity
  (const arma::uvec& paternity,
   const arma::umat& offspring_phenotypes, 
@@ -897,6 +899,645 @@ Rcpp::List sample_paternity_and_error_rates_from_joint_posterior
     Rcpp::_["number_of_fathers"] = number_of_fathers_samples,
     Rcpp::_["dropout_errors"] = dropout_errors,
     Rcpp::_["mistyping_errors"] = mistyping_errors,
+    Rcpp::_["deviance"] = deviance_samples);
+}
+
+// ------------------------- alternative implementation without DP ------------------------ //
+
+// [[Rcpp::export]]
+arma::uvec sample_matrix (arma::mat probabilities)
+{
+  arma::uvec draw (2);
+  probabilities /= arma::accu(probabilities);
+  arma::vec row_sums = arma::sum(probabilities, 1);
+  draw[0] = sample(row_sums);
+  draw[1] = sample(arma::trans(probabilities.row(draw[0])));
+  return draw;
+}
+
+// [[Rcpp::export]]
+arma::ucube select_columns_from_cube (arma::ucube input, arma::uvec which)
+{
+  if (which.max() >= input.n_cols) Rcpp::stop("Out of column range");
+  arma::ucube output = input;
+  arma::uvec drop = arma::regspace<arma::uvec>(0, input.n_cols-1);
+  drop.shed_rows(which);
+  for (unsigned i=drop.n_elem; i>0; --i) output.shed_col(drop[i-1]);
+  return output;
+}
+
+// [[Rcpp::export]]
+double phenotype_error_model
+ (const arma::uvec& phenotype,
+  const arma::uvec& genotype,
+  const unsigned& number_of_alleles,
+  const double& dropout_rate, 
+  const double& mistyping_rate)
+{
+  // from Eqs 1 & 2 in Wang 2004 Genetics
+
+  if (phenotype.n_elem != genotype.n_elem) Rcpp::stop("Genotype and phenotype are different lengths");
+  if (phenotype.n_elem > 2) Rcpp::stop("Ploidy cannot be greater than two");
+  if (number_of_alleles == 1) return 1.; //monomorphic loci
+
+  const double e1 = dropout_rate;
+  const double e2 = mistyping_rate/double(number_of_alleles-1);
+  const double E2 = mistyping_rate;
+
+  const bool genotype_is_diploid = phenotype.n_elem == 2;
+
+  if (genotype_is_diploid)
+  {
+    const bool phenotype_is_homozygous = phenotype[0] == phenotype[1];
+    const bool genotype_is_homozygous = genotype[0] == genotype[1];
+    if (genotype_is_homozygous) 
+    {
+      if (phenotype_is_homozygous && phenotype[0] == genotype[0])
+      {
+        return std::pow(1.-E2, 2);
+      } else if ((phenotype[0] == genotype[0] && phenotype[1] != genotype[0]) || 
+          (phenotype[0] != genotype[0] && phenotype[1] == genotype[0]) ){
+        return 2.*e2*(1-E2);
+      } else if (phenotype[0] != genotype[0] && phenotype[1] != genotype[0]) {
+        return (2.-int(phenotype_is_homozygous))*std::pow(e2, 2);
+      }  
+    } else {
+      if ( (phenotype[0] == genotype[0] && phenotype[1] == genotype[1]) ||
+          (phenotype[1] == genotype[0] && phenotype[0] == genotype[1]) )
+      {
+        return std::pow(1.-E2, 2) + std::pow(e2, 2) - 2.*e1*std::pow(1.-E2-e2, 2);
+      } else if (phenotype_is_homozygous && (phenotype[0] == genotype[0] || phenotype[0] == genotype[1])) {
+        return e2*(1.-E2) + e1*std::pow(1.-E2-e2, 2);
+      } else if (phenotype[0] != genotype[0] && phenotype[0] != genotype[1] && 
+          phenotype[1] != genotype[0] && phenotype[1] != genotype[1] ){
+        return (2.-int(phenotype_is_homozygous))*std::pow(e2, 2);
+      } else {
+        // Wang 2018 has (1-E2-e2) and Wang 2004 has (1-E2+e2), latter is correct
+        return e2*(1.-E2+e2);
+      }
+    }
+  } else { // haploid, only mistyping errors
+    if (phenotype[0] == genotype[0])
+    {
+      return 1.-E2; // 1 - Pr(other allele) - Pr(other other allele) - ... = 1 - e2 - e2 - .... = 1 - prob of error
+    } else {
+      return e2; // Pr(other allele) = e2
+    }
+  }
+  return 0.;
+}
+
+// [[Rcpp::export]]
+arma::uvec sample_phenotype_errors
+ (const arma::uvec& phenotype,
+  const arma::uvec& genotype,
+  const unsigned& number_of_alleles,
+  const double& dropout_rate, 
+  const double& mistyping_rate)
+{
+  if (phenotype.n_elem != genotype.n_elem) Rcpp::stop("Genotype and phenotype are different lengths");
+  if (phenotype.n_elem > 2) Rcpp::stop("Ploidy cannot be greater than two");
+  if (number_of_alleles == 1) return arma::zeros<arma::uvec>(phenotype.n_elem); // monomorphic loci
+
+  const double e1 = dropout_rate;
+  const double e2 = mistyping_rate/double(number_of_alleles-1);
+  const double E2 = mistyping_rate;
+
+  const bool genotype_is_diploid = phenotype.n_elem == 2;
+
+  if (genotype_is_diploid)
+  {
+    const bool phenotype_is_homozygous = phenotype[0] == phenotype[1];
+    const bool genotype_is_homozygous = genotype[0] == genotype[1];
+    if (genotype_is_homozygous) 
+    {
+      if (phenotype_is_homozygous && phenotype[0] == genotype[0])
+      {
+        return arma::uvec({0, 0});
+      } else if ((phenotype[0] == genotype[0] && phenotype[1] != genotype[0]) || 
+          (phenotype[0] != genotype[0] && phenotype[1] == genotype[0]) ){
+        return arma::uvec({0, 1});
+      } else if (phenotype[0] != genotype[0] && phenotype[1] != genotype[0]) {
+        return arma::uvec({0, 2});
+      }  
+    } else {
+      if ( (phenotype[0] == genotype[0] && phenotype[1] == genotype[1]) ||
+          (phenotype[1] == genotype[0] && phenotype[0] == genotype[1]) )
+      {
+        // either: no errors occurred OR 
+        //         there was no dropout error but two typing errors
+        //         there was a dropout error that got fixed by single typing error
+        // prop.table(c((1-2*e1)*(1-E2)^2, (1-2*e1)*e2*e2, 4*e1*e2*(1-E2)))
+        // sum(c((1-2*e1)*(1-E2)^2, (1-2*e1)*e2*e2, 4*e1*e2*(1-E2)))
+        // (1-E2)^2 + e2^2 - 2*e1*(1-E2-e2)^2
+        // [0,0] [0,2] [1,1]
+        const arma::vec probs = {(1-2*e1)*(1-E2)*(1-E2), (1-2*e1)*e2*e2, 4*e1*e2*(1-E2)};
+        const arma::umat counts = {{0,0},{0,2},{1,1}};
+        return counts.row(sample(probs)).t();
+      } else if (phenotype_is_homozygous && (phenotype[0] == genotype[0] || phenotype[0] == genotype[1])) {
+        // one class 2 error OR there was a dropout error and no typing errors
+        // prop.table(c(e1*(1-E2)^2, (1-2*e1)*e2*(1-E2), e1*e2*e2))
+        // sum(c(e1*(1-E2)^2, (1-2*e1)*e2*(1-E2), e1*e2*e2))
+        // e2*(1-E2) + e1*(1-E2-e2)^2
+        // [0 1] [1 0] [1 2]
+        const arma::vec probs = {e1*(1-E2)*(1-E2), (1-2*e1)*e2*(1-E2), e1*e2*e2};
+        const arma::umat counts = {{1,0},{0,1},{1,2}};
+        return counts.row(sample(probs)).t();
+      } else if (phenotype[0] != genotype[0] && phenotype[0] != genotype[1] && 
+          phenotype[1] != genotype[0] && phenotype[1] != genotype[1] ){
+        // two class 2 errors occurred, regardless of whether class 1 error occurs
+        // prop.table(c( (1-2*e1)*e2*e2 , 2*e1*e2*e2 ))
+        // [0 2] [1 2]
+        const arma::vec probs = {(1-2*e1)*e2*e2, 2*e1*e2*e2};
+        const arma::umat counts = {{0,2},{1,2}};
+        return counts.row(sample(probs)).t();
+      } else {
+        // "otherwise" ... there's one match but phenotype is heterozygous?
+        // 1. could have: sequencing error at one, no sequencing error at other
+        // 2. sequencing error gets fixed by second sequencing error
+        // dropout could happen in either case
+        // prop.table(c( (1-2*e1)*e2*(1-E2), (1-2*e1)*e2*e2, 2*e1*e2*(1-E2), 2*e1*e2*e2 ))
+        // [0 1] [0 2] [1 1] [1 2]
+        const arma::vec probs = {(1-2*e1)*e2*(1-E2), (1-2*e1)*e2*e2, 2*e1*e2*(1-E2), 2*e1*e2*e2};
+        const arma::umat counts = {{0,1},{0,2},{1,1},{1,2}};
+        return counts.row(sample(probs)).t();
+      }
+    }
+  } else {
+    if (phenotype[0] == genotype[0])
+    {
+      return arma::uvec({0,0});
+    } else {
+      return arma::uvec({0,1});
+    }
+  }
+  return arma::zeros<arma::uvec>(2);
+}
+
+// [[Rcpp::export]]
+double mendelian_genotype_model
+ (const arma::uvec& offspring_phenotype,
+  const arma::uvec& maternal_genotype,
+  const arma::uvec& paternal_genotype,
+  const unsigned& number_of_alleles,
+  const double& dropout_rate, 
+  const double& mistyping_rate)
+{
+  const bool offspring_is_haploid = offspring_phenotype.n_elem == 1;
+  arma::uvec offspring_genotype (offspring_phenotype.n_elem);
+  double likelihood = 0.;
+  unsigned number_of_possible_genotypes = 0;
+  for (auto maternal_allele : maternal_genotype)
+  {
+    offspring_genotype[0] = maternal_allele;
+    if (offspring_is_haploid)
+    {
+      likelihood += phenotype_error_model(offspring_phenotype, offspring_genotype, number_of_alleles, dropout_rate, mistyping_rate);
+      number_of_possible_genotypes++;
+    } else {
+      for (auto paternal_allele : paternal_genotype)
+      {
+        offspring_genotype[1] = paternal_allele;
+        likelihood += phenotype_error_model(offspring_phenotype, offspring_genotype, number_of_alleles, dropout_rate, mistyping_rate);
+        number_of_possible_genotypes++;
+      }
+    }
+  }
+  likelihood /= double(number_of_possible_genotypes);
+  return likelihood;
+}
+
+// [[Rcpp::export]]
+arma::uvec sample_mendelian_genotype
+ (const arma::uvec& offspring_phenotype,
+  const arma::uvec& maternal_genotype,
+  const arma::uvec& paternal_genotype,
+  const unsigned& number_of_alleles,
+  const double& dropout_rate, 
+  const double& mistyping_rate)
+{
+  // this is poorly written, clean it up
+  const bool offspring_is_haploid = offspring_phenotype.n_elem == 1;
+  arma::uvec offspring_genotype (offspring_phenotype.n_elem);
+  arma::mat likelihood = offspring_is_haploid ? 
+    arma::zeros(maternal_genotype.n_elem, 1) : 
+    arma::zeros(maternal_genotype.n_elem, paternal_genotype.n_elem);
+  for (unsigned maternal_allele=0; maternal_allele<maternal_genotype.n_elem; ++maternal_allele)
+  {
+    offspring_genotype[0] = maternal_genotype[maternal_allele];
+    if (offspring_is_haploid)
+    {
+      likelihood.at(maternal_allele, 1) = 
+        phenotype_error_model(offspring_phenotype, offspring_genotype, number_of_alleles, dropout_rate, mistyping_rate);
+    } else {
+      for (unsigned paternal_allele=0; paternal_allele<paternal_genotype.n_elem; ++paternal_allele)
+      {
+        offspring_genotype[1] = paternal_genotype[paternal_allele];
+        likelihood.at(maternal_allele, paternal_allele) =
+          phenotype_error_model(offspring_phenotype, offspring_genotype, number_of_alleles, dropout_rate, mistyping_rate);
+      }
+    }
+  }
+  arma::uvec new_phenotype = sample_matrix(likelihood).head(offspring_genotype.n_elem);
+  new_phenotype[0] = maternal_genotype[new_phenotype[0]];
+  if (!offspring_is_haploid)
+  {
+    new_phenotype[1] = paternal_genotype[new_phenotype[1]];
+  }
+  return new_phenotype;
+}
+
+// [[Rcpp::export]]
+Rcpp::List sample_parentage_and_error_rates_from_joint_posterior
+ (arma::ucube phenotypes, 
+  arma::uvec mothers,
+  arma::uvec fathers,
+  arma::uvec holdouts,
+  const unsigned number_of_mcmc_samples = 1000,
+  const unsigned burn_in_samples = 100,
+  const unsigned thinning_interval = 1,
+  const bool global_genotyping_error_rates = true)
+{
+  if (mothers.n_elem == 0 || fathers.n_elem == 0) Rcpp::stop("Must have at least one potential father and mother");
+  if (mothers.max() > phenotypes.n_cols || mothers.min() < 1) Rcpp::stop("1-based index of mothers out of range");
+  if (fathers.max() > phenotypes.n_cols || fathers.min() < 1) Rcpp::stop("1-based index of fathers out of range");
+  if (holdouts.max() > phenotypes.n_cols || holdouts.min() < 1) Rcpp::stop("1-based index of holdouts out of range");
+
+  //this way of specifying parental phenotypes could allow monoiecious mating systems in the future
+  mothers = arma::unique(mothers);
+  fathers = arma::unique(fathers);
+  holdouts = arma::unique(holdouts);
+  arma::uvec parents_and_holdouts = arma::unique(arma::join_vert(arma::join_vert(mothers, fathers), holdouts));
+  arma::uvec offspring = arma::regspace<arma::uvec>(1, phenotypes.n_cols);
+  offspring.shed_rows(parents_and_holdouts-1);
+  if (parents_and_holdouts.n_elem != holdouts.n_elem + mothers.n_elem + fathers.n_elem) Rcpp::stop("Overlap in mother/father/holdouts");
+  if (phenotypes.n_cols != offspring.n_elem + parents_and_holdouts.n_elem) Rcpp::stop("Splitting issues?");
+
+  // recode alleles to integers, split parental and offspring phenotypes
+  std::vector<arma::vec> allele_frequencies = collapse_alleles_and_generate_genotype_prior(phenotypes, false);
+  mothers -= 1; fathers -= 1; holdouts -= 1; parents_and_holdouts -= 1; offspring -= 1; // convert to 0-based indices
+  arma::ucube maternal_phenotypes = select_columns_from_cube(phenotypes, mothers); 
+  arma::ucube paternal_phenotypes = select_columns_from_cube(phenotypes, fathers); 
+  arma::ucube holdout_phenotypes = select_columns_from_cube(phenotypes, holdouts); 
+  arma::ucube offspring_phenotypes = select_columns_from_cube(phenotypes, offspring); 
+  paternal_phenotypes.shed_row(1); //diploid->haploid
+
+  // priors (hardcoded for now)
+  const double delta = 1.; //allele frequency concentration parameter
+  const arma::vec dropout_rate_prior = {{1.,1.}}; //beta(number of dropout homozygotes, number of heterozygotes)
+  const arma::vec mistyping_rate_prior = {{1.,1.}}; //beta(number of mistypes, number of correct calls)
+
+  // dimensions
+  const unsigned max_iter = number_of_mcmc_samples;
+  const unsigned num_loci = phenotypes.n_slices;
+  const unsigned num_mothers = mothers.n_elem;
+  const unsigned num_fathers = fathers.n_elem;
+  const unsigned num_holdouts = holdouts.n_elem;
+  const unsigned num_offspring = offspring.n_elem;
+  const unsigned num_samples = phenotypes.n_cols;
+  arma::uvec num_alleles (num_loci); 
+  for (unsigned locus=0; locus<num_loci; ++locus) num_alleles[locus] = allele_frequencies[locus].n_elem;
+
+  // initialize (could draw from prior instead)
+  arma::uvec maternity = arma::zeros<arma::uvec>(num_offspring);
+  arma::uvec paternity = arma::zeros<arma::uvec>(num_offspring);
+  arma::vec dropout_rate (num_loci); dropout_rate.fill(0.05);
+  arma::vec mistyping_rate (num_loci); mistyping_rate.fill(0.05);
+  arma::ucube maternal_genotypes = maternal_phenotypes; maternal_genotypes.replace(0, 1);
+  arma::ucube paternal_genotypes = paternal_phenotypes; paternal_genotypes.replace(0, 1);
+  arma::ucube offspring_genotypes = offspring_phenotypes; offspring_genotypes.replace(0, 1);
+  // sample missing (0) from HWE prior TODO use MAP estimate for reproducible
+
+  // storage
+  arma::imat paternity_samples (num_samples, max_iter); paternity_samples.fill(arma::datum::nan);
+  arma::imat maternity_samples (num_samples, max_iter); maternity_samples.fill(arma::datum::nan);
+  arma::mat dropout_rate_samples (num_loci, max_iter); dropout_rate_samples.fill(arma::datum::nan);
+  arma::mat mistyping_rate_samples (num_loci, max_iter); mistyping_rate_samples.fill(arma::datum::nan);
+  arma::mat deviance_samples (num_samples, max_iter); deviance_samples.fill(arma::datum::nan);
+  arma::mat holdout_deviance_samples (num_samples, max_iter); holdout_deviance_samples.fill(arma::datum::nan);
+  std::vector<arma::mat> allele_frequencies_samples;
+  for (unsigned locus=0; locus<num_loci; ++locus) allele_frequencies_samples.push_back(arma::zeros<arma::mat>(num_alleles[locus], max_iter));
+  arma::mat dropout_error_expectation (num_samples, num_loci, arma::fill::zeros);
+  arma::mat mistyping_error_expectation (num_samples, num_loci, arma::fill::zeros);
+  std::vector<arma::cube> genotypes_expectation;
+  for (unsigned locus=0; locus<num_loci; ++locus) 
+  {
+    genotypes_expectation.push_back(arma::zeros<arma::cube>(num_alleles[locus], num_alleles[locus], num_samples));
+  }
+
+  // Gibbs sampler
+  int start = -int(burn_in_samples);
+  for (int iter=start; iter<int(max_iter); ++iter)
+  {
+    for (unsigned thin=0; thin<thinning_interval; ++thin)
+    {
+      std::vector<arma::uvec> allele_counts;
+      for (unsigned locus=0; locus<num_loci; ++locus) allele_counts.push_back(arma::zeros<arma::uvec>(num_alleles[locus]));
+      arma::uvec num_phenotyped_alleles (num_loci, arma::fill::zeros); 
+      arma::uvec num_heterozygotes (num_loci, arma::fill::zeros); //not counting haploids (fathers)
+      arma::umat maternal_dropout_errors (num_mothers, num_loci, arma::fill::zeros);
+      arma::umat paternal_dropout_errors (num_fathers, num_loci, arma::fill::zeros);
+      arma::umat offspring_dropout_errors (num_offspring, num_loci, arma::fill::zeros);
+      arma::umat maternal_mistyping_errors (num_mothers, num_loci, arma::fill::zeros);
+      arma::umat paternal_mistyping_errors (num_fathers, num_loci, arma::fill::zeros);
+      arma::umat offspring_mistyping_errors (num_offspring, num_loci, arma::fill::zeros);
+      arma::vec deviance (num_offspring, arma::fill::zeros);
+      arma::vec holdout_deviance (num_holdouts, arma::fill::zeros);
+
+      // ------ sample maternal genotypes ------
+      for (unsigned mother=0; mother<num_mothers; ++mother)
+      {
+        arma::uvec children = arma::find(maternity == mother);
+        for (unsigned locus=0; locus<num_loci; ++locus)
+        {
+          arma::mat maternal_genotype_probabilities(num_alleles[locus], num_alleles[locus]);
+          maternal_genotype_probabilities.fill(-arma::datum::inf);
+          for (unsigned first_allele=0; first_allele<num_alleles[locus]; first_allele++)
+          {
+            for (unsigned second_allele=first_allele; second_allele<num_alleles[locus]; second_allele++)
+            {
+              // hardy-weinberg prior
+              arma::uvec maternal_genotype ({first_allele+1, second_allele+1}); // 1-based allele indexing
+              maternal_genotype_probabilities.at(first_allele, second_allele) = 
+                log(2. - int(first_allele == second_allele)) +
+                log(allele_frequencies[locus].at(first_allele)) + 
+                log(allele_frequencies[locus].at(second_allele)); 
+
+              // phenotype likelihoods
+              if (maternal_phenotypes.at(0, mother, locus))
+              {
+                maternal_genotype_probabilities.at(first_allele, second_allele) += 
+                  log(phenotype_error_model(maternal_phenotypes.slice(locus).col(mother), maternal_genotype,
+                        num_alleles[locus], dropout_rate[locus], mistyping_rate[locus]));
+              }
+              for (auto sib : children)
+              {
+                if (offspring_phenotypes.at(0, sib, locus))
+                {
+                  maternal_genotype_probabilities.at(first_allele, second_allele) += 
+                    log(mendelian_genotype_model(offspring_phenotypes.slice(locus).col(sib), maternal_genotype,
+                          paternal_genotypes.slice(locus).col(paternity[sib]), 
+                          num_alleles[locus], dropout_rate[locus], mistyping_rate[locus]));
+                }
+              }
+            }
+          }
+          arma::uvec new_alleles = sample_matrix(arma::exp(maternal_genotype_probabilities - maternal_genotype_probabilities.max()));
+          for (unsigned i=0; i<2; ++i)
+          {
+            allele_counts[locus].at(new_alleles[i])++;
+            maternal_genotypes.at(i, mother, locus) = new_alleles[i] + 1; //1-based allele indexing
+          }
+        }
+      }
+
+      // ------ sample paternal genotypes ------ 
+      for (unsigned father=0; father<num_fathers; ++father)
+      {
+        arma::uvec children = arma::find(paternity == father);
+        for (unsigned locus=0; locus<num_loci; ++locus)
+        {
+          arma::vec paternal_genotype_probabilities(num_alleles[locus]);
+          paternal_genotype_probabilities.fill(-arma::datum::inf);
+          for (unsigned first_allele=0; first_allele<num_alleles[locus]; first_allele++)
+          {
+            // hardy-weinberg prior
+            arma::uvec paternal_genotype ({first_allele + 1}); // 1-based allele indexing
+            paternal_genotype_probabilities.at(first_allele) = log(allele_frequencies[locus].at(first_allele)); 
+
+            // phenotype likelihoods
+            if (paternal_phenotypes.at(0, father, locus))
+            {
+              paternal_genotype_probabilities.at(first_allele) += 
+                log(phenotype_error_model(paternal_phenotypes.slice(locus).col(father), paternal_genotype,
+                      num_alleles[locus], dropout_rate[locus], mistyping_rate[locus]));
+            }
+            for (auto sib : children)
+            {
+              if (offspring_phenotypes.at(0, sib, locus))
+              {
+                paternal_genotype_probabilities.at(first_allele) += 
+                  log(mendelian_genotype_model(offspring_phenotypes.slice(locus).col(sib), 
+                        maternal_genotypes.slice(locus).col(maternity[sib]), paternal_genotype,
+                        num_alleles[locus], dropout_rate[locus], mistyping_rate[locus]));
+              }
+            }
+          }
+          unsigned new_allele = sample(arma::exp(paternal_genotype_probabilities - paternal_genotype_probabilities.max()));
+          allele_counts[locus].at(new_allele)++;
+          paternal_genotypes.at(0, father, locus) = new_allele + 1; // 1-based allele indexing
+        }
+      }
+
+      // ------ sample allele frequencies ------
+      for (unsigned locus=0; locus<num_loci; ++locus)
+      {
+        for (unsigned allele=0; allele<num_alleles[locus]; ++allele)
+        {
+          allele_frequencies[locus][allele] = R::rgamma(1. + allele_counts[locus][allele], 1.);
+        }
+        allele_frequencies[locus] /= arma::accu(allele_frequencies[locus]);
+      }
+
+      // ------ sample offspring genotypes ------
+      for (unsigned sib=0; sib<num_offspring; ++sib)
+      {
+        for (unsigned locus=0; locus<num_loci; ++locus)
+        {
+          offspring_genotypes.slice(locus).col(sib) = 
+            sample_mendelian_genotype(offspring_phenotypes.slice(locus).col(sib), 
+                maternal_genotypes.slice(locus).col(maternity[sib]), 
+                paternal_genotypes.slice(locus).col(paternity[sib]), 
+                num_alleles[locus], dropout_rate[locus], mistyping_rate[locus]);
+        }
+      }
+
+      // ------ sample errors and error rates ------ 
+      for (unsigned locus=0; locus<num_loci; ++locus)
+      {
+        // maternal phenotyping errors
+        for (unsigned mother=0; mother<num_mothers; ++mother)
+        {
+          if (maternal_phenotypes.at(0,mother,locus))
+          {
+            num_phenotyped_alleles.at(locus) += 2;
+            num_heterozygotes.at(locus) += int(maternal_genotypes.at(0,mother,locus) != maternal_genotypes.at(1,mother,locus));
+            arma::uvec phenotyping_errors = 
+              sample_phenotype_errors(maternal_phenotypes.slice(locus).col(mother),
+                                      maternal_genotypes.slice(locus).col(mother),
+                                      num_alleles[locus], dropout_rate[locus], mistyping_rate[locus]);
+            maternal_dropout_errors.at(mother, locus) += phenotyping_errors[0];
+            maternal_mistyping_errors.at(mother, locus) += phenotyping_errors[1];
+          }
+        }
+
+        // paternal phenotyping errors
+        for (unsigned father=0; father<num_fathers; ++father)
+        {
+          if (paternal_phenotypes.at(0,father,locus))
+          {
+            num_phenotyped_alleles.at(locus) += 1;
+            arma::uvec phenotyping_errors = 
+              sample_phenotype_errors(paternal_phenotypes.slice(locus).col(father),
+                                      paternal_genotypes.slice(locus).col(father),
+                                      num_alleles[locus], dropout_rate[locus], mistyping_rate[locus]);
+            paternal_dropout_errors.at(father, locus) += phenotyping_errors[0];
+            paternal_mistyping_errors.at(father, locus) += phenotyping_errors[1];
+          }
+        }
+
+        // offspring phenotyping errors
+        for (unsigned sib=0; sib<num_offspring; ++sib)
+        {
+          if (offspring_phenotypes.at(0,sib,locus))
+          {
+            num_phenotyped_alleles.at(locus) += 2;
+            num_heterozygotes.at(locus) += int(offspring_genotypes.at(0,sib,locus) != offspring_genotypes.at(1,sib,locus));
+            arma::uvec phenotyping_errors = 
+              sample_phenotype_errors(offspring_phenotypes.slice(locus).col(sib),
+                                      offspring_genotypes.slice(locus).col(sib),
+                                      num_alleles[locus], dropout_rate[locus], mistyping_rate[locus]);
+            offspring_dropout_errors.at(sib, locus) += phenotyping_errors[0];
+            offspring_mistyping_errors.at(sib, locus) += phenotyping_errors[1];
+          }
+        }
+
+        // update error rates
+        unsigned dropout_errors = arma::accu(offspring_dropout_errors.col(locus)) +
+          arma::accu(maternal_dropout_errors.col(locus)) + arma::accu(paternal_dropout_errors.col(locus));
+        unsigned mistyping_errors = arma::accu(offspring_mistyping_errors.col(locus)) +
+          arma::accu(maternal_mistyping_errors.col(locus)) + arma::accu(paternal_mistyping_errors.col(locus));
+        dropout_rate[locus] = 0.5 * R::rbeta(1. + dropout_errors, 1. + num_heterozygotes[locus] - dropout_errors);
+        mistyping_rate[locus] = R::rbeta(1. + mistyping_errors, 1. + num_phenotyped_alleles[locus] - mistyping_errors);
+      }
+      if (global_genotyping_error_rates) // overwrite per-locus rates with global rate
+      {
+        unsigned dropout_errors = arma::accu(offspring_dropout_errors) +
+          arma::accu(maternal_dropout_errors) + arma::accu(paternal_dropout_errors);
+        unsigned mistyping_errors = arma::accu(offspring_mistyping_errors) +
+          arma::accu(maternal_mistyping_errors) + arma::accu(paternal_mistyping_errors);
+        dropout_rate.fill(0.5 * R::rbeta(1. + dropout_errors, 1. + arma::accu(num_heterozygotes) - dropout_errors));
+        mistyping_rate.fill(R::rbeta(1. + mistyping_errors, 1. + arma::accu(num_phenotyped_alleles) - mistyping_errors));
+      }
+
+      // ------ sample parentage ------
+      for (unsigned sib=0; sib<num_offspring; ++sib)
+      {
+        arma::mat log_likelihood (num_fathers, num_mothers, arma::fill::zeros);
+        for (unsigned father=0; father<num_fathers; ++father)
+        {
+          for (unsigned mother=0; mother<num_mothers; ++mother)
+          {
+            for (unsigned locus=0; locus<num_loci; ++locus)
+            {
+              if (offspring_phenotypes.at(0, sib, locus))
+              {
+                log_likelihood.at(father, mother) += 
+                      log(mendelian_genotype_model(offspring_phenotypes.slice(locus).col(sib), 
+                                                   maternal_genotypes.slice(locus).col(mother),
+                                                   paternal_genotypes.slice(locus).col(father),
+                                                   num_alleles[locus], dropout_rate[locus], mistyping_rate[locus]));
+              }
+            }
+          }
+        }
+        arma::uvec new_parentage = sample_matrix(arma::exp(log_likelihood - log_likelihood.max()));
+        paternity[sib] = new_parentage[0];
+        maternity[sib] = new_parentage[1];
+        deviance.at(sib) = log_likelihood.at(paternity[sib], maternity[sib]);
+      }
+
+      if (thin == 0 && iter >= 0)
+      {
+        // calculate posterior predictive on holdout set
+        for (unsigned extra=0; extra<num_holdouts; ++extra)
+        {
+          arma::mat posterior_predictive (num_fathers, num_mothers, arma::fill::zeros);
+          for (unsigned father=0; father<num_fathers; ++father)
+          {
+            for (unsigned mother=0; mother<num_mothers; ++mother)
+            {
+              for (unsigned locus=0; locus<num_loci; ++locus)
+              {
+                if (holdout_phenotypes.at(0, extra, locus))
+                {
+                  posterior_predictive.at(father, mother) += 
+                    log(mendelian_genotype_model(holdout_phenotypes.slice(locus).col(extra), 
+                          maternal_genotypes.slice(locus).col(mother),
+                          paternal_genotypes.slice(locus).col(father),
+                          num_alleles[locus], dropout_rate[locus], mistyping_rate[locus]));
+                }
+              }
+            }
+          }
+          holdout_deviance.at(extra) = 
+            log(arma::accu(arma::exp(posterior_predictive - posterior_predictive.max()))) + 
+            posterior_predictive.max() - log(posterior_predictive.n_elem);
+        }
+
+        // store state, mapping samples back to original indicies
+        dropout_rate_samples.col(iter) = dropout_rate;
+        mistyping_rate_samples.col(iter) = mistyping_rate;
+        for (unsigned locus=0; locus<num_loci; ++locus)
+        {
+          allele_frequencies_samples[locus].col(iter) = allele_frequencies[locus];
+          for (unsigned mother=0; mother<num_mothers; ++mother)
+          {
+            dropout_error_expectation.at(mothers[mother], locus) += maternal_dropout_errors.at(mother, locus)/double(max_iter);
+            mistyping_error_expectation.at(mothers[mother], locus) += maternal_mistyping_errors.at(mother, locus)/double(max_iter);
+            genotypes_expectation[locus].at(maternal_genotypes.at(0, mother, locus)-1, 
+                maternal_genotypes.at(1, mother, locus)-1, mothers[mother]) += 1./double(max_iter);
+          }
+          for (unsigned father=0; father<num_fathers; ++father)
+          {
+            dropout_error_expectation.at(fathers[father], locus) += paternal_dropout_errors.at(father, locus)/double(max_iter);
+            mistyping_error_expectation.at(fathers[father], locus) += paternal_mistyping_errors.at(father, locus)/double(max_iter);
+            genotypes_expectation[locus].at(paternal_genotypes.at(0, father, locus)-1, 
+                paternal_genotypes.at(0, father, locus)-1, fathers[father]) += 1./double(max_iter);
+          }
+          for (unsigned sib=0; sib<num_offspring; ++sib)
+          {
+            dropout_error_expectation.at(offspring[sib], locus) += offspring_dropout_errors.at(sib, locus)/double(max_iter);
+            mistyping_error_expectation.at(offspring[sib], locus) += offspring_mistyping_errors.at(sib, locus)/double(max_iter);
+            genotypes_expectation[locus].at(offspring_genotypes.at(0, sib, locus)-1, 
+                offspring_genotypes.at(0, sib, locus)-1, offspring[sib]) += 1./double(max_iter);
+          }
+        }
+        for (unsigned sib=0; sib<num_offspring; ++sib)
+        {
+          paternity_samples.at(offspring[sib], iter) = paternity[sib];
+          maternity_samples.at(offspring[sib], iter) = maternity[sib];
+          deviance_samples.at(offspring[sib], iter) = deviance.at(sib);
+        }
+        for (unsigned extra=0; extra<num_holdouts; ++extra)
+        {
+          holdout_deviance_samples.at(holdouts[extra], iter) = holdout_deviance.at(extra);
+        }
+
+        // progress
+        if (iter % 100 == 0) Rcpp::Rcout << "[" << iter << "] " << "deviance: " << arma::accu(deviance) << std::endl;
+      }
+    }
+  }
+
+  // Rcpp collapses dimensions for elements in std::vector, so copy these over to Rcpp::List
+  Rcpp::List genotypes_expectation_wrapped = Rcpp::List::create();
+  Rcpp::List allele_frequencies_samples_wrapped = Rcpp::List::create();
+  for (unsigned locus=0; locus<num_loci; ++locus) {
+    genotypes_expectation_wrapped.push_back(genotypes_expectation[locus]);
+    allele_frequencies_samples_wrapped.push_back(allele_frequencies_samples[locus]);
+  }
+
+  return Rcpp::List::create(
+    Rcpp::_["paternity"] = paternity_samples,
+    Rcpp::_["maternity"] = maternity_samples,
+    Rcpp::_["dropout_rate"] = dropout_rate_samples,
+    Rcpp::_["mistyping_rate"] = mistyping_rate_samples,
+    Rcpp::_["dropout_errors"] = dropout_error_expectation,
+    Rcpp::_["mistyping_errors"] = mistyping_error_expectation,
+    Rcpp::_["genotypes"] = genotypes_expectation_wrapped,
+    Rcpp::_["allele_frequencies"] = allele_frequencies_samples_wrapped,
+    Rcpp::_["holdout_deviance"] = holdout_deviance_samples,
     Rcpp::_["deviance"] = deviance_samples);
 }
 

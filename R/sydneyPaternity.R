@@ -163,7 +163,6 @@ simulate_sibling_group <- function(number_of_offspring,
        )
 }
 
-
 perturb_paternity_vector <- function(paternity, number_of_changes = 1)
 {
   unique_fathers <- unique(paternity)
@@ -208,6 +207,7 @@ list_of_genotype_arrays_to_txt <- function(genotype_list, filename)
       number_of_samples <- dim(genotype_array)[2]
       for (i in 1:number_of_samples)
       {
+        cat(dimnames(genotype_array)[[2]][i],"\t",sep="")
         for (j in 1:number_of_loci)
         {
           cat(paste(genotype_array[,i,j],collapse="/"),"\t",sep="")
@@ -329,5 +329,169 @@ plot_posterior <- function(mcmc_paternity)
     scale_y_continuous(expand=c(0,0), limits=c(-1,15),breaks=seq(0.5,14.5,1),labels=1:15)
 }
 
+add_unsampled_to_phenotype_array <- function(phenotypes, fathers = 0, mothers = 0, offspring = 0)
+{
+  new_phenotypes <- array(0, dim=c(dim(phenotypes)[1], dim(phenotypes)[2]+fathers+mothers+offspring, dim(phenotypes)[3]))
+  sample_names <- dimnames(phenotypes)[[2]]
+  if (fathers>0) sample_names <- c(sample_names, paste0("add_father", 1:fathers))
+  if (mothers>0) sample_names <- c(sample_names, paste0("add_mother", 1:mothers))
+  if (offspring>0) sample_names <- c(sample_names, paste0("add_offspring", 1:offspring))
+  dimnames(new_phenotypes) <- list(dimnames(phenotypes)[[1]], sample_names, dimnames(phenotypes)[[3]])
+  for (i in 1:dim(phenotypes)[2]) new_phenotypes[,i,] <- phenotypes[,i,]
+  new_phenotypes
+}
 
+cross_validation_for_number_of_parents <- 
+  function(phenotypes, 
+           sampled_mothers=1, #indices
+           max_fathers=1, 
+           max_mothers=0,
+           nmcmc=500, nburnin=500, nthin=20)
+{
+  if (max_mothers < length(sampled_mothers)) stop("max_mothers < length(sampled_mothers)")
+  if (max_mothers < 1 | max_fathers < 1) stop("max_mothers < 1 | max_fathers < 1")
 
+  loo_cv <- data.frame()
+  raw_lpd <- list()
+  nmothers <- max_mothers
+  nfathers <- max_fathers
+  start <- if (length(sampled_mothers) == 0) 1 else length(sampled_mothers)
+  for(m in start:nmothers)
+  {
+    for(f in 1:nfathers)
+    {
+      cat(m, " ", f, "\n", sep="")
+      raw_lpd[[paste0(m,"_",f)]] <- c()
+      new_phenotypes <- add_unsampled_to_phenotype_array(phenotypes, mothers=m-length(sampled_mothers), fathers=f)
+      offspring <- 1:dim(phenotypes)[2]
+      if (length(sampled_mothers)>0) offspring <- offspring[-sampled_mothers]
+      for (i in offspring)
+      {
+        fit <- sample_parentage_and_error_rates_from_joint_posterior(
+                 new_phenotypes,
+                 c(sampled_mothers, grep("add_mother", dimnames(new_phenotypes)[[2]])),
+                 grep("add_father", dimnames(new_phenotypes)[[2]]),
+                 c(i),
+                 number_of_mcmc_samples = nmcmc,
+                 burn_in_samples = nburnin,
+                 thinning_interval = nthin)
+        raw_lpd[[paste0(m,"_",f)]] <- rbind(raw_lpd[[paste0(m,"_",f)]], fit$holdout_deviance[i,])
+      }
+      elpd <- rowMeans(raw_lpd[[paste0(m,"_",f)]])
+      loo_cv <- rbind(loo_cv, data.frame(elpd=elpd, sample=offspring, fathers=f, mothers=m))
+    }
+  }
+  average_scores <- aggregate(loo_cv$elpd, by=list(fathers=loo_cv$fathers, mothers=loo_cv$mothers), mean)
+  best_fathers <- average_scores$fathers[which.max(average_scores$x)]
+  best_mothers <- average_scores$mothers[which.max(average_scores$x)]
+  new_phenotypes <- add_unsampled_to_phenotype_array(phenotypes, mothers=best_mothers-length(sampled_mothers), fathers=best_fathers, offspring=1) 
+  fit <- sydneyPaternity:::sample_parentage_and_error_rates_from_joint_posterior(
+           new_phenotypes,
+           c(sampled_mothers, grep("add_mother", dimnames(new_phenotypes)[[2]])),
+           grep("add_father", dimnames(new_phenotypes)[[2]]),
+           grep("add_offspring", dimnames(new_phenotypes)[[2]]),
+           number_of_mcmc_samples = nmcmc,
+           burn_in_samples = nburnin,
+           thinning_interval = nthin)
+  list(loo_cv=loo_cv, raw_lpd=raw_lpd, top_model=fit, dim_names=dimnames(new_phenotypes))
+}
+
+plot_cross_validation_scores <- function(cv_output)
+{
+  library(ggplot2)
+  cv_output$loo_cv$fathers <- factor(cv_output$loo_cv$fathers)
+  cv_output$loo_cv$mothers <- factor(cv_output$loo_cv$mothers)
+  ggplot(cv_output$loo_cv) + 
+    stat_summary(geom="pointrange", aes(x=mothers, y=elpd, group=fathers, color=fathers), position=position_dodge(width=0.3)) +
+    theme_bw() + theme(panel.grid=element_blank(), text=element_text(family="Garamond"), strip.background=element_blank()) + 
+    ylab("Average leave-one-out cross-validation score\n(higher is better)") + 
+    xlab("# mothers in model") + labs(color="# fathers")
+}
+
+plot_cross_validation_traces <- function(cv_scores)
+{
+  library(ggplot2)
+  id <- strsplit(names(cv_scores$raw_lpd), split="_")
+  out <- c()
+  for(i in 1:length(cv_scores$raw_lpd))
+  {
+    tmp <- data.frame(elpd=colMeans(cv_scores$raw_lpd[[i]]))
+    tmp$rep <- 1:nrow(tmp)
+    tmp$mothers <- paste0("mothers=",id[[i]][1])
+    tmp$fathers <- paste0("fathers=",id[[i]][2])
+    out <- rbind(out, tmp)
+  }
+  ggplot(out, aes(x=rep, y=elpd)) + geom_point(alpha=0.1, shape=19) + facet_wrap(fathers~mothers) + 
+    theme_bw() + theme(panel.grid=element_blank(), text=element_text(family="Garamond"), strip.background=element_blank()) + 
+    geom_smooth(method="loess", alpha=0.5, size=0.5, formula=y~x) +
+    ylab("Average predictive score") + xlab("MCMC iteration")
+}
+
+plot_cross_validation_parentage <- function(cv_output)
+{
+  library(ggplot2)
+  model <- cv_output$top_model
+  offspring <- which(!is.na(cv_output$top_model$maternity[,1]))
+  names(offspring) <- cv_output$dim_names[[2]][offspring]
+
+  maternity_matrix <- matrix(0, length(offspring), length(offspring))
+  for(i in 1:ncol(model$maternity))
+  {
+    maternity_matrix <- maternity_matrix + paternity_vector_to_adjacency_matrix(model$maternity[offspring,i])
+  }
+  maternity_matrix <- maternity_matrix / ncol(model$maternity)
+  rownames(maternity_matrix) <- colnames(maternity_matrix) <- names(offspring)
+
+  paternity_matrix <- matrix(0, length(offspring), length(offspring))
+  for(i in 1:ncol(model$paternity))
+  {
+    paternity_matrix <- paternity_matrix + paternity_vector_to_adjacency_matrix(model$paternity[offspring,i])
+  }
+  paternity_matrix <- paternity_matrix / ncol(model$paternity)
+  rownames(paternity_matrix) <- colnames(paternity_matrix) <- names(offspring)
+
+  ord <- colnames(paternity_matrix)[hclust(1-as.dist(paternity_matrix))$order]
+
+  df_paternity <- as.data.frame(which(!is.na(paternity_matrix), arr.ind=TRUE))
+  df_paternity$probability <- c(paternity_matrix)
+  df_paternity$row <- colnames(paternity_matrix)[df_paternity$row]
+  df_paternity$col <- colnames(paternity_matrix)[df_paternity$col]
+  df_paternity$type <- 'Half-sib'
+  df_maternity <- as.data.frame(which(!is.na(maternity_matrix), arr.ind=TRUE))
+  df_maternity$probability <- c(maternity_matrix)
+  df_maternity$row <- colnames(maternity_matrix)[df_maternity$row]
+  df_maternity$col <- colnames(maternity_matrix)[df_maternity$col]
+  df_maternity$type <- 'Full-sib'
+
+  df <- rbind(df_maternity, df_paternity)
+  df$row <- factor(df$row, levels=ord)
+  df$col <- factor(df$col, levels=ord)
+
+  ggplot(df) +
+    geom_tile(aes(y=row, x=col, fill=probability), color="black") +
+    scale_x_discrete(expand=c(0,0)) + scale_y_discrete(expand=c(0,0)) +
+    scale_fill_gradient(low="white", high="dodgerblue") +
+    theme_bw() + facet_grid(~type) + 
+    theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1), axis.title=element_blank(), strip.background=element_blank(), text=element_text(family="Garamond"))
+}
+
+remove_loci_with_excessive_missingness <- function(genotypes, threshold)
+{
+  prop_missing <- apply(genotypes, 3, function(x) sum(is.na(x) | x == 0)/length(c(x)))
+  cat("Dropped ", sum(prop_missing > threshold), " loci\n", sep="")
+  genotypes[,,prop_missing <= threshold]
+}
+
+remove_samples_with_excessive_missingness <- function(genotypes, threshold)
+{
+  prop_missing <- apply(genotypes, 2, function(x) sum(is.na(x) | x == 0)/length(c(x)))
+  cat("Dropped ", sum(prop_missing > threshold), " samples\n", sep="")
+  genotypes[,prop_missing <= threshold,]
+}
+
+remove_monomorphic_loci <- function(genotypes)
+{
+  num_alleles <- apply(genotypes, 3, function(x) length(unique(x[x!=0 & !is.na(x)])))
+  cat("Dropped ", sum(num_alleles < 2), " loci\n", sep="")
+  genotypes[,,num_alleles > 1]
+}

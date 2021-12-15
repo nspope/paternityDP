@@ -8,7 +8,6 @@ allele_freqs <- list(
                      "btms0066"=c("133"=0.203, "136"=0.318, "139"=0.066, "142"=0.096,"145"=0.051,"148"=0.267),
                      "b124"=c("247"=0.103, "251"=0.045, "253"=0.115,"255"=0.115,"259"=0.245, "261"=0.061, "263"=0.058, "265"=0.097, "271"=0.030, "275"=0.021, "277"=0.064, "279"=0.009,"287"=0.036),
                      "btern01"= c("128"=0.004, "130"=0.458, "132"=0.152,"134"=0.097,"136"=0.099, "138"=0.103, "140"=0.046, "142"=0.025, "144"=0.017),
-                     "bt28" = c("178"=1.00),
                      "btms0062" = c("261"=0.022, "263"=0.022, "267"=0.012,"269"=0.100,"271"=0.028, "275"=0.062, "277"=0.068, "279"=0.046, "281"=0.006, "283"=0.167, "285"=0.056, "287"=0.068,"289"=0.149,"291"=0.100,"295"=0.30,"299"=0.018,"303"=0.040,"305"=0.004),
                      "btms0073" = c("120"=0.053,"123"=0.907,"126"=0.036,"129"=0.004),
                      "bt10"=c("147"=0.009,"149"=0.084,"151"=0.142,"153"=0.202,"155"=0.142,"157"=0.090,"159"=0.145,"161"=0.151,"165"=0.012,"167"=0.024),
@@ -19,7 +18,7 @@ allele_freqs <- list(
 
 # set simulation parameters here, all combinations of values will be considered
 grid_of_simulation_parameters <- 
-  expand.grid(replicate=1:10, #probably want more like 1:100 for actual analysis
+  expand.grid(replicate=1:3, #probably want more like 1:100 for actual analysis
               num_fathers=1:4, #range of fathers in colony
               error_rates_in_simulation=0.05, #used for simulating data
               error_rates_in_estimation=NA, #used for estimating from simulated data
@@ -57,8 +56,6 @@ list_of_genotype_arrays_to_txt(list(out$observed_maternal_genotype, out$observed
 
 # 2. Load the genotype data we just saved into an array
 my_genotype_data <- genotype_array_from_txt("example_data.txt")
-my_genotype_data_raw <- as.numeric(my_genotype_data) #TODO
-my_genotype_data <- array(my_genotype_data_raw, dim(my_genotype_data))
 
 # 3. Jointly estimate paternity and error rates
 set.seed(1)
@@ -78,7 +75,7 @@ if (num_fathers %in% names(posterior_probs))
 }
 if ("1" %in% names(posterior_probs))
 {
-  posterior_prob_of_monandry <- posterior_probs[names(posterior_probs)==1]
+  posterior_prob_of_monandry <- posterior_probs[names(posterior_probs)=="1"]
 } else {
   posterior_prob_of_monandry <- 0
 }
@@ -95,5 +92,6 @@ simulation_results <- rbind(simulation_results,
 }
 
 save(simulation_results_raw, simulation_results, file="simulation_results.RData")
+#load("simulation_results.RData") #to load back in again
 
 

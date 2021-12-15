@@ -167,6 +167,109 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// sample_matrix
+arma::uvec sample_matrix(arma::mat probabilities);
+RcppExport SEXP _sydneyPaternity_sample_matrix(SEXP probabilitiesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type probabilities(probabilitiesSEXP);
+    rcpp_result_gen = Rcpp::wrap(sample_matrix(probabilities));
+    return rcpp_result_gen;
+END_RCPP
+}
+// select_columns_from_cube
+arma::ucube select_columns_from_cube(arma::ucube input, arma::uvec which);
+RcppExport SEXP _sydneyPaternity_select_columns_from_cube(SEXP inputSEXP, SEXP whichSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::ucube >::type input(inputSEXP);
+    Rcpp::traits::input_parameter< arma::uvec >::type which(whichSEXP);
+    rcpp_result_gen = Rcpp::wrap(select_columns_from_cube(input, which));
+    return rcpp_result_gen;
+END_RCPP
+}
+// phenotype_error_model
+double phenotype_error_model(const arma::uvec& phenotype, const arma::uvec& genotype, const unsigned& number_of_alleles, const double& dropout_rate, const double& mistyping_rate);
+RcppExport SEXP _sydneyPaternity_phenotype_error_model(SEXP phenotypeSEXP, SEXP genotypeSEXP, SEXP number_of_allelesSEXP, SEXP dropout_rateSEXP, SEXP mistyping_rateSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::uvec& >::type phenotype(phenotypeSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type genotype(genotypeSEXP);
+    Rcpp::traits::input_parameter< const unsigned& >::type number_of_alleles(number_of_allelesSEXP);
+    Rcpp::traits::input_parameter< const double& >::type dropout_rate(dropout_rateSEXP);
+    Rcpp::traits::input_parameter< const double& >::type mistyping_rate(mistyping_rateSEXP);
+    rcpp_result_gen = Rcpp::wrap(phenotype_error_model(phenotype, genotype, number_of_alleles, dropout_rate, mistyping_rate));
+    return rcpp_result_gen;
+END_RCPP
+}
+// sample_phenotype_errors
+arma::uvec sample_phenotype_errors(const arma::uvec& phenotype, const arma::uvec& genotype, const unsigned& number_of_alleles, const double& dropout_rate, const double& mistyping_rate);
+RcppExport SEXP _sydneyPaternity_sample_phenotype_errors(SEXP phenotypeSEXP, SEXP genotypeSEXP, SEXP number_of_allelesSEXP, SEXP dropout_rateSEXP, SEXP mistyping_rateSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::uvec& >::type phenotype(phenotypeSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type genotype(genotypeSEXP);
+    Rcpp::traits::input_parameter< const unsigned& >::type number_of_alleles(number_of_allelesSEXP);
+    Rcpp::traits::input_parameter< const double& >::type dropout_rate(dropout_rateSEXP);
+    Rcpp::traits::input_parameter< const double& >::type mistyping_rate(mistyping_rateSEXP);
+    rcpp_result_gen = Rcpp::wrap(sample_phenotype_errors(phenotype, genotype, number_of_alleles, dropout_rate, mistyping_rate));
+    return rcpp_result_gen;
+END_RCPP
+}
+// mendelian_genotype_model
+double mendelian_genotype_model(const arma::uvec& offspring_phenotype, const arma::uvec& maternal_genotype, const arma::uvec& paternal_genotype, const unsigned& number_of_alleles, const double& dropout_rate, const double& mistyping_rate);
+RcppExport SEXP _sydneyPaternity_mendelian_genotype_model(SEXP offspring_phenotypeSEXP, SEXP maternal_genotypeSEXP, SEXP paternal_genotypeSEXP, SEXP number_of_allelesSEXP, SEXP dropout_rateSEXP, SEXP mistyping_rateSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::uvec& >::type offspring_phenotype(offspring_phenotypeSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type maternal_genotype(maternal_genotypeSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type paternal_genotype(paternal_genotypeSEXP);
+    Rcpp::traits::input_parameter< const unsigned& >::type number_of_alleles(number_of_allelesSEXP);
+    Rcpp::traits::input_parameter< const double& >::type dropout_rate(dropout_rateSEXP);
+    Rcpp::traits::input_parameter< const double& >::type mistyping_rate(mistyping_rateSEXP);
+    rcpp_result_gen = Rcpp::wrap(mendelian_genotype_model(offspring_phenotype, maternal_genotype, paternal_genotype, number_of_alleles, dropout_rate, mistyping_rate));
+    return rcpp_result_gen;
+END_RCPP
+}
+// sample_mendelian_genotype
+arma::uvec sample_mendelian_genotype(const arma::uvec& offspring_phenotype, const arma::uvec& maternal_genotype, const arma::uvec& paternal_genotype, const unsigned& number_of_alleles, const double& dropout_rate, const double& mistyping_rate);
+RcppExport SEXP _sydneyPaternity_sample_mendelian_genotype(SEXP offspring_phenotypeSEXP, SEXP maternal_genotypeSEXP, SEXP paternal_genotypeSEXP, SEXP number_of_allelesSEXP, SEXP dropout_rateSEXP, SEXP mistyping_rateSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::uvec& >::type offspring_phenotype(offspring_phenotypeSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type maternal_genotype(maternal_genotypeSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type paternal_genotype(paternal_genotypeSEXP);
+    Rcpp::traits::input_parameter< const unsigned& >::type number_of_alleles(number_of_allelesSEXP);
+    Rcpp::traits::input_parameter< const double& >::type dropout_rate(dropout_rateSEXP);
+    Rcpp::traits::input_parameter< const double& >::type mistyping_rate(mistyping_rateSEXP);
+    rcpp_result_gen = Rcpp::wrap(sample_mendelian_genotype(offspring_phenotype, maternal_genotype, paternal_genotype, number_of_alleles, dropout_rate, mistyping_rate));
+    return rcpp_result_gen;
+END_RCPP
+}
+// sample_parentage_and_error_rates_from_joint_posterior
+Rcpp::List sample_parentage_and_error_rates_from_joint_posterior(arma::ucube phenotypes, arma::uvec mothers, arma::uvec fathers, arma::uvec holdouts, const unsigned number_of_mcmc_samples, const unsigned burn_in_samples, const unsigned thinning_interval, const bool global_genotyping_error_rates);
+RcppExport SEXP _sydneyPaternity_sample_parentage_and_error_rates_from_joint_posterior(SEXP phenotypesSEXP, SEXP mothersSEXP, SEXP fathersSEXP, SEXP holdoutsSEXP, SEXP number_of_mcmc_samplesSEXP, SEXP burn_in_samplesSEXP, SEXP thinning_intervalSEXP, SEXP global_genotyping_error_ratesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::ucube >::type phenotypes(phenotypesSEXP);
+    Rcpp::traits::input_parameter< arma::uvec >::type mothers(mothersSEXP);
+    Rcpp::traits::input_parameter< arma::uvec >::type fathers(fathersSEXP);
+    Rcpp::traits::input_parameter< arma::uvec >::type holdouts(holdoutsSEXP);
+    Rcpp::traits::input_parameter< const unsigned >::type number_of_mcmc_samples(number_of_mcmc_samplesSEXP);
+    Rcpp::traits::input_parameter< const unsigned >::type burn_in_samples(burn_in_samplesSEXP);
+    Rcpp::traits::input_parameter< const unsigned >::type thinning_interval(thinning_intervalSEXP);
+    Rcpp::traits::input_parameter< const bool >::type global_genotyping_error_rates(global_genotyping_error_ratesSEXP);
+    rcpp_result_gen = Rcpp::wrap(sample_parentage_and_error_rates_from_joint_posterior(phenotypes, mothers, fathers, holdouts, number_of_mcmc_samples, burn_in_samples, thinning_interval, global_genotyping_error_rates));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_sydneyPaternity_log_ascending_factorial", (DL_FUNC) &_sydneyPaternity_log_ascending_factorial, 2},
@@ -180,6 +283,13 @@ static const R_CallMethodDef CallEntries[] = {
     {"_sydneyPaternity_loglikelihood_of_error_rates_given_paternity", (DL_FUNC) &_sydneyPaternity_loglikelihood_of_error_rates_given_paternity, 4},
     {"_sydneyPaternity_collapse_alleles_and_generate_prior_wrapper", (DL_FUNC) &_sydneyPaternity_collapse_alleles_and_generate_prior_wrapper, 3},
     {"_sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior", (DL_FUNC) &_sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior, 5},
+    {"_sydneyPaternity_sample_matrix", (DL_FUNC) &_sydneyPaternity_sample_matrix, 1},
+    {"_sydneyPaternity_select_columns_from_cube", (DL_FUNC) &_sydneyPaternity_select_columns_from_cube, 2},
+    {"_sydneyPaternity_phenotype_error_model", (DL_FUNC) &_sydneyPaternity_phenotype_error_model, 5},
+    {"_sydneyPaternity_sample_phenotype_errors", (DL_FUNC) &_sydneyPaternity_sample_phenotype_errors, 5},
+    {"_sydneyPaternity_mendelian_genotype_model", (DL_FUNC) &_sydneyPaternity_mendelian_genotype_model, 6},
+    {"_sydneyPaternity_sample_mendelian_genotype", (DL_FUNC) &_sydneyPaternity_sample_mendelian_genotype, 6},
+    {"_sydneyPaternity_sample_parentage_and_error_rates_from_joint_posterior", (DL_FUNC) &_sydneyPaternity_sample_parentage_and_error_rates_from_joint_posterior, 8},
     {NULL, NULL, 0}
 };
 

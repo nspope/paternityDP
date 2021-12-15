@@ -45,3 +45,31 @@ sample_paternity_and_error_rates_from_joint_posterior <- function(phenotypes, mo
     .Call(`_sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior`, phenotypes, mother, number_of_mcmc_samples, global_genotyping_error_rates, concentration)
 }
 
+sample_matrix <- function(probabilities) {
+    .Call(`_sydneyPaternity_sample_matrix`, probabilities)
+}
+
+select_columns_from_cube <- function(input, which) {
+    .Call(`_sydneyPaternity_select_columns_from_cube`, input, which)
+}
+
+phenotype_error_model <- function(phenotype, genotype, number_of_alleles, dropout_rate, mistyping_rate) {
+    .Call(`_sydneyPaternity_phenotype_error_model`, phenotype, genotype, number_of_alleles, dropout_rate, mistyping_rate)
+}
+
+sample_phenotype_errors <- function(phenotype, genotype, number_of_alleles, dropout_rate, mistyping_rate) {
+    .Call(`_sydneyPaternity_sample_phenotype_errors`, phenotype, genotype, number_of_alleles, dropout_rate, mistyping_rate)
+}
+
+mendelian_genotype_model <- function(offspring_phenotype, maternal_genotype, paternal_genotype, number_of_alleles, dropout_rate, mistyping_rate) {
+    .Call(`_sydneyPaternity_mendelian_genotype_model`, offspring_phenotype, maternal_genotype, paternal_genotype, number_of_alleles, dropout_rate, mistyping_rate)
+}
+
+sample_mendelian_genotype <- function(offspring_phenotype, maternal_genotype, paternal_genotype, number_of_alleles, dropout_rate, mistyping_rate) {
+    .Call(`_sydneyPaternity_sample_mendelian_genotype`, offspring_phenotype, maternal_genotype, paternal_genotype, number_of_alleles, dropout_rate, mistyping_rate)
+}
+
+sample_parentage_and_error_rates_from_joint_posterior <- function(phenotypes, mothers, fathers, holdouts, number_of_mcmc_samples = 1000L, burn_in_samples = 100L, thinning_interval = 1L, global_genotyping_error_rates = TRUE) {
+    .Call(`_sydneyPaternity_sample_parentage_and_error_rates_from_joint_posterior`, phenotypes, mothers, fathers, holdouts, number_of_mcmc_samples, burn_in_samples, thinning_interval, global_genotyping_error_rates)
+}
+
