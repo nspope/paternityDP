@@ -456,12 +456,12 @@ plot_cross_validation_parentage <- function(cv_output)
   df_paternity$probability <- c(paternity_matrix)
   df_paternity$row <- colnames(paternity_matrix)[df_paternity$row]
   df_paternity$col <- colnames(paternity_matrix)[df_paternity$col]
-  df_paternity$type <- 'Half-sib'
+  df_paternity$type <- 'Share father'
   df_maternity <- as.data.frame(which(!is.na(maternity_matrix), arr.ind=TRUE))
   df_maternity$probability <- c(maternity_matrix)
   df_maternity$row <- colnames(maternity_matrix)[df_maternity$row]
   df_maternity$col <- colnames(maternity_matrix)[df_maternity$col]
-  df_maternity$type <- 'Full-sib'
+  df_maternity$type <- 'Share mother'
 
   df <- rbind(df_maternity, df_paternity)
   df$row <- factor(df$row, levels=ord)
