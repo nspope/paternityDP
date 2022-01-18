@@ -270,6 +270,44 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// sample_parentage_and_error_rates_from_joint_posterior_alt
+Rcpp::List sample_parentage_and_error_rates_from_joint_posterior_alt(arma::ucube phenotypes, arma::uvec mothers, arma::uvec fathers, const double concentration, const unsigned number_of_mcmc_samples, const unsigned burn_in_samples, const unsigned thinning_interval, const bool global_genotyping_error_rates, const bool sample_from_prior, const bool random_initialization);
+RcppExport SEXP _sydneyPaternity_sample_parentage_and_error_rates_from_joint_posterior_alt(SEXP phenotypesSEXP, SEXP mothersSEXP, SEXP fathersSEXP, SEXP concentrationSEXP, SEXP number_of_mcmc_samplesSEXP, SEXP burn_in_samplesSEXP, SEXP thinning_intervalSEXP, SEXP global_genotyping_error_ratesSEXP, SEXP sample_from_priorSEXP, SEXP random_initializationSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::ucube >::type phenotypes(phenotypesSEXP);
+    Rcpp::traits::input_parameter< arma::uvec >::type mothers(mothersSEXP);
+    Rcpp::traits::input_parameter< arma::uvec >::type fathers(fathersSEXP);
+    Rcpp::traits::input_parameter< const double >::type concentration(concentrationSEXP);
+    Rcpp::traits::input_parameter< const unsigned >::type number_of_mcmc_samples(number_of_mcmc_samplesSEXP);
+    Rcpp::traits::input_parameter< const unsigned >::type burn_in_samples(burn_in_samplesSEXP);
+    Rcpp::traits::input_parameter< const unsigned >::type thinning_interval(thinning_intervalSEXP);
+    Rcpp::traits::input_parameter< const bool >::type global_genotyping_error_rates(global_genotyping_error_ratesSEXP);
+    Rcpp::traits::input_parameter< const bool >::type sample_from_prior(sample_from_priorSEXP);
+    Rcpp::traits::input_parameter< const bool >::type random_initialization(random_initializationSEXP);
+    rcpp_result_gen = Rcpp::wrap(sample_parentage_and_error_rates_from_joint_posterior_alt(phenotypes, mothers, fathers, concentration, number_of_mcmc_samples, burn_in_samples, thinning_interval, global_genotyping_error_rates, sample_from_prior, random_initialization));
+    return rcpp_result_gen;
+END_RCPP
+}
+// sample_parentage_and_error_rates
+Rcpp::List sample_parentage_and_error_rates(arma::ucube phenotypes, const unsigned mother, const unsigned burn_in, const unsigned thinning_interval, const unsigned number_of_mcmc_samples, const bool global_genotyping_error_rates, const double concentration, const double starting_error_rate);
+RcppExport SEXP _sydneyPaternity_sample_parentage_and_error_rates(SEXP phenotypesSEXP, SEXP motherSEXP, SEXP burn_inSEXP, SEXP thinning_intervalSEXP, SEXP number_of_mcmc_samplesSEXP, SEXP global_genotyping_error_ratesSEXP, SEXP concentrationSEXP, SEXP starting_error_rateSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::ucube >::type phenotypes(phenotypesSEXP);
+    Rcpp::traits::input_parameter< const unsigned >::type mother(motherSEXP);
+    Rcpp::traits::input_parameter< const unsigned >::type burn_in(burn_inSEXP);
+    Rcpp::traits::input_parameter< const unsigned >::type thinning_interval(thinning_intervalSEXP);
+    Rcpp::traits::input_parameter< const unsigned >::type number_of_mcmc_samples(number_of_mcmc_samplesSEXP);
+    Rcpp::traits::input_parameter< const bool >::type global_genotyping_error_rates(global_genotyping_error_ratesSEXP);
+    Rcpp::traits::input_parameter< const double >::type concentration(concentrationSEXP);
+    Rcpp::traits::input_parameter< const double >::type starting_error_rate(starting_error_rateSEXP);
+    rcpp_result_gen = Rcpp::wrap(sample_parentage_and_error_rates(phenotypes, mother, burn_in, thinning_interval, number_of_mcmc_samples, global_genotyping_error_rates, concentration, starting_error_rate));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_sydneyPaternity_log_ascending_factorial", (DL_FUNC) &_sydneyPaternity_log_ascending_factorial, 2},
@@ -290,6 +328,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_sydneyPaternity_mendelian_genotype_model", (DL_FUNC) &_sydneyPaternity_mendelian_genotype_model, 6},
     {"_sydneyPaternity_sample_mendelian_genotype", (DL_FUNC) &_sydneyPaternity_sample_mendelian_genotype, 6},
     {"_sydneyPaternity_sample_parentage_and_error_rates_from_joint_posterior", (DL_FUNC) &_sydneyPaternity_sample_parentage_and_error_rates_from_joint_posterior, 8},
+    {"_sydneyPaternity_sample_parentage_and_error_rates_from_joint_posterior_alt", (DL_FUNC) &_sydneyPaternity_sample_parentage_and_error_rates_from_joint_posterior_alt, 10},
+    {"_sydneyPaternity_sample_parentage_and_error_rates", (DL_FUNC) &_sydneyPaternity_sample_parentage_and_error_rates, 8},
     {NULL, NULL, 0}
 };
 

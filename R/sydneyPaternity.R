@@ -495,3 +495,305 @@ remove_monomorphic_loci <- function(genotypes)
   cat("Dropped ", sum(num_alleles < 2), " loci\n", sep="")
   genotypes[,,num_alleles > 1]
 }
+
+fit_dp_model <- #doesnt work delete at some point
+  function(phenotypes, 
+           sampled_mothers=1, #indices
+           nmcmc=500, nburnin=500, nthin=20, sample_from_prior=FALSE, concentration = 1, random_initialization = FALSE)
+{
+  models <- list()
+  offspring <- 1:dim(phenotypes)[2]
+  if (length(sampled_mothers)>0) offspring <- offspring[-sampled_mothers]
+  new_phenotypes <- add_unsampled_to_phenotype_array(phenotypes, mothers=length(offspring), fathers=length(offspring), offspring=0)
+  fathers <- grep("add_father", dimnames(new_phenotypes)[[2]])
+  mothers <- c(sampled_mothers, grep("add_mother", dimnames(new_phenotypes)[[2]]))
+  fit <- sample_parentage_and_error_rates_from_joint_posterior_alt(
+                 new_phenotypes,
+                 mothers = mothers,
+                 fathers = fathers,
+                 concentration = concentration,
+                 number_of_mcmc_samples = nmcmc,
+                 burn_in_samples = nburnin,
+                 thinning_interval = nthin,
+                 sample_from_prior = sample_from_prior,
+                 random_initialization = random_initialization)
+  fit$sample_names <- dimnames(new_phenotypes)[[2]]
+  fit$imputed_genotypes <- get_imputed_genotypes(fit)
+  dimnames(fit$imputed_genotypes) <- dimnames(new_phenotypes)
+  fit$paternal_genotypes <- fit$imputed_genotypes[,fathers,]
+  fit$maternal_genotypes <- fit$imputed_genotypes[,mothers,]
+  fit
+}
+
+get_imputed_genotypes <- function(model) #useful for previous versions
+{
+  genotypes <- array(NA, c(2,nrow(model$paternity),length(model$genotypes)))
+  for(locus in 1:length(model$genotypes)){
+  allele_names <- model$allele_lengths[[locus]]
+  genotypes[,,locus] <- apply(model$genotypes[[locus]], 3, function(x) allele_names[which(x==max(x),arr.ind=TRUE)[1,]])
+  }
+  genotypes
+}
+
+#--------------------------------------------------- simulation w/ fixed distance
+
+simulate_sibling_group_with_fixed_parental_genotypes <- 
+  function(maternal_genotypes,
+           paternal_genotypes,
+           number_of_offspring, 
+           proportion_of_sperm_per_father, 
+           allele_frequencies_per_msat,
+           rate_of_allelic_dropout_per_locus,
+           rate_of_allelic_mistyping_per_locus,
+           probability_of_missing_data)
+{
+  number_of_loci <- length(allele_frequencies_per_msat)
+  number_of_msats <- length(allele_frequencies_per_msat)
+  number_of_alleles_per_msat <- sapply(allele_frequencies_per_msat, length)
+  number_of_fathers <- length(proportion_of_sperm_per_father)
+  number_of_mothers <- 1 #for now, restrict to single mother per sib-group
+  maternal_ploidy <- 2
+  paternal_ploidy <- 1
+  offspring_ploidy <- 2
+
+  # reparameterize error rates to probabilities 
+  probability_of_allelic_dropout_per_locus <- rate_of_allelic_dropout_per_locus
+  probability_of_allelic_mistyping_per_locus <- rate_of_allelic_mistyping_per_locus
+
+  # check inputs
+  stopifnot(number_of_offspring >= 1)
+  stopifnot(number_of_fathers >= 1)
+  stopifnot(length(probability_of_allelic_dropout_per_locus) == number_of_loci)
+  stopifnot(length(probability_of_allelic_mistyping_per_locus) == number_of_loci)
+  stopifnot(dim(paternal_genotypes)[1] == 1 & 
+            dim(paternal_genotypes)[2] == number_of_fathers &
+            dim(paternal_genotypes)[3] == number_of_loci) 
+  stopifnot(dim(maternal_genotypes)[1] == 2 & 
+            dim(maternal_genotypes)[2] == number_of_mothers &
+            dim(maternal_genotypes)[3] == number_of_loci) 
+            
+  # allocate output
+  true_maternal_genotypes <- array(NA, dim=c(maternal_ploidy, number_of_mothers, number_of_loci), 
+                                   dimnames=list(paste0("allele",1:maternal_ploidy),paste0("mother",1:number_of_mothers),paste0("locus",1:number_of_loci)))
+  observed_maternal_genotypes <- array(NA, dim=c(maternal_ploidy, number_of_mothers, number_of_loci),
+                                       dimnames=list(paste0("allele",1:maternal_ploidy),paste0("mother",1:number_of_mothers),paste0("locus",1:number_of_loci)))
+  true_paternal_genotypes <- array(NA, dim=c(paternal_ploidy, number_of_fathers, number_of_loci),
+                                   dimnames=list(paste0("allele",1:paternal_ploidy),paste0("father",1:number_of_fathers),paste0("locus",1:number_of_loci)))
+  observed_paternal_genotypes <- array(NA, dim=c(paternal_ploidy, number_of_fathers, number_of_loci),
+                                       dimnames=list(paste0("allele",1:paternal_ploidy),paste0("father",1:number_of_fathers),paste0("locus",1:number_of_loci)))
+  true_offspring_genotypes <- array(NA, dim=c(offspring_ploidy, number_of_offspring, number_of_loci),
+                                    dimnames=list(paste0("allele",1:offspring_ploidy),paste0("offspring",1:number_of_offspring),paste0("locus",1:number_of_loci)))
+  observed_offspring_genotypes <- array(NA, dim=c(offspring_ploidy, number_of_offspring, number_of_loci),
+                                        dimnames=list(paste0("allele",1:offspring_ploidy),paste0("offspring",1:number_of_offspring),paste0("locus",1:number_of_loci)))
+  offspring_paternity <- rep(NA, number_of_offspring)
+  offspring_maternity <- rep(1, number_of_offspring) #for now, restrict to single mother per sib-group
+  names(offspring_paternity) <- names(offspring_maternity) <- paste0("offspring",1:number_of_offspring)
+
+  # simulate paternity and maternity of offspring
+  offspring_paternity[] <- sample(1:number_of_fathers,
+                                  size=number_of_offspring,
+                                  prob=proportion_of_sperm_per_father,
+                                  replace=TRUE)
+  offspring_maternity[] <- 1 #for now all sibs have same mother
+
+  for (locus in 1:number_of_loci)
+  {
+    # if there aren't 'labels' associated with alleles, use integers
+    if (is.null(names(allele_frequencies_per_msat[[locus]]))) names(allele_frequencies_per_msat[[locus]]) <- as.character(1:number_of_alleles_per_msat[locus])
+
+    # simulate true parental genotypes
+    for (father in 1:number_of_fathers)
+    {
+      true_paternal_genotypes[,father,locus] <- paternal_genotypes[,father,locus] 
+    }
+    for (mother in 1:number_of_mothers)
+    {
+      true_maternal_genotypes[,mother,locus] <- maternal_genotypes[,mother,locus]
+    }
+
+    # simulate true offspring genotypes, conditional on paternity/maternity and parental genotypes
+    for (sib in 1:number_of_offspring)
+    {
+      true_offspring_genotypes[1,sib,locus] <- sample(true_maternal_genotypes[,offspring_maternity[sib],locus], size=1)
+      true_offspring_genotypes[2,sib,locus] <- sample(true_paternal_genotypes[,offspring_paternity[sib],locus], size=1)
+    }
+
+    # in practice genotyping is prone to error. For microsats, this is modelled by
+    # "allele dropout", where only one allele amplifies (observed genotype always appears homozygous)
+    # "mistyping", where a given allele gets mistakenly genotyped as another
+    # "missing data", where neither allele amplifies
+    simulate_genotyping_errors <- function(genotype, 
+                                           possible_alleles,
+                                           probability_of_allelic_dropout,
+                                           probability_of_allelic_mistyping,
+                                           probability_of_missing_data)
+    { 
+      # this function replicates the error model used by COLONY, see (Wang 2004 Genetics) and (Wang 2018 Methods Ecology Evolution)
+      if (runif(1) < probability_of_missing_data) 
+      { 
+        genotype[] <- NA 
+        return(genotype)
+      }
+      dropouts <- 0
+      mistypes <- 0
+      if (length(unique(genotype)) > 1)
+      {
+        if (runif(1) < 2*probability_of_allelic_dropout) 
+        { 
+          genotype[] <- sample(genotype, size=1) 
+          dropouts <- dropouts+1
+        }
+      }
+      for (allele in 1:length(genotype)) 
+      { 
+        if (length(possible_alleles) > 1)
+        {
+          if (runif(1) < probability_of_allelic_mistyping) 
+          { 
+            genotype[allele] <- sample(possible_alleles[possible_alleles != genotype[allele]], size=1) 
+            mistypes <- mistypes+1
+          } 
+        }
+      }
+      attr(genotype, "errors") <- c(dropouts,mistypes)
+      return(genotype)
+    }
+
+    errors <- c(0,0)
+    for (father in 1:number_of_fathers) 
+    { 
+      observed_paternal_genotypes[,father,locus] <- 
+        simulate_genotyping_errors(genotype = true_paternal_genotypes[,father,locus], 
+                                   possible_alleles = names(allele_frequencies_per_msat[[locus]]), 
+                                   probability_of_allelic_dropout = probability_of_allelic_dropout_per_locus[locus], 
+                                   probability_of_allelic_mistyping = probability_of_allelic_mistyping_per_locus[locus], 
+                                   probability_of_missing_data = probability_of_missing_data)
+    }
+    for (mother in 1:number_of_mothers)
+    { 
+      observed_maternal_genotypes[,mother,locus] <- draw <-
+        simulate_genotyping_errors(genotype = true_maternal_genotypes[,mother,locus], 
+                                   possible_alleles = names(allele_frequencies_per_msat[[locus]]), 
+                                   probability_of_allelic_dropout = probability_of_allelic_dropout_per_locus[locus], 
+                                   probability_of_allelic_mistyping = probability_of_allelic_mistyping_per_locus[locus], 
+                                   probability_of_missing_data = probability_of_missing_data)
+      if (!any(is.na(draw))) errors <- errors + attr(draw, "errors")
+    }
+    for (sib in 1:number_of_offspring) 
+    { 
+      observed_offspring_genotypes[,sib,locus] <- draw <-
+        simulate_genotyping_errors(genotype = true_offspring_genotypes[,sib,locus], 
+                                   possible_alleles = names(allele_frequencies_per_msat[[locus]]), 
+                                   probability_of_allelic_dropout = probability_of_allelic_dropout_per_locus[locus], 
+                                   probability_of_allelic_mistyping = probability_of_allelic_mistyping_per_locus[locus], 
+                                   probability_of_missing_data = probability_of_missing_data)
+      if (!any(is.na(draw))) errors <- errors + attr(draw, "errors")
+    }
+  }
+  names(errors) <- c("dropouts", "mistypes")
+
+  list("true_offspring_genotypes"=true_offspring_genotypes,
+       "observed_offspring_genotypes"=observed_offspring_genotypes,
+       "true_maternal_genotypes"=true_maternal_genotypes,
+       "observed_maternal_genotypes"=observed_maternal_genotypes,
+       "true_paternal_genotypes"=true_paternal_genotypes,
+       "observed_paternal_genotypes"=observed_paternal_genotypes,
+       "offspring_paternity"=offspring_paternity,
+       "offspring_maternity"=offspring_maternity,
+       "observed_number_of_fathers"=length(unique(offspring_paternity)),
+       "errors"=errors
+       )
+}
+
+simulate_mixed_colony <- function(number_of_offspring, new_mother_distance, new_father_distance, new_parents_proportion, allele_frequencies_per_msat, rate_of_allelic_dropout, rate_of_allelic_mistyping, probability_of_missing_data)
+{
+  num_loci <- length(allele_frequencies_per_msat)
+
+  # simulate core colony
+  offspring_in_core_colony <- floor(number_of_offspring * new_parents_proportion)
+  core_colony <- simulate_sibling_group (number_of_offspring = offspring_in_core_colony, 
+                          proportion_of_sperm_per_father = 1,
+                          allele_frequencies_per_msat = allele_frequencies_per_msat,
+                          rate_of_allelic_dropout_per_locus = rep(rate_of_allelic_dropout, num_loci),
+                          rate_of_allelic_mistyping_per_locus = rep(rate_of_allelic_mistyping, num_loci),
+                          probability_of_missing_data = probability_of_missing_data)
+
+  # simulate extra parents genotypes
+  maternal_genotype <- apply(core_colony$true_maternal_genotypes, c(2,3), sort)
+  extramaternal_genotype <- maternal_genotype
+  maxit <- 1000
+  if (new_mother_distance > 0){
+    diffs <- sample(1:length(maternal_genotype), new_mother_distance)
+    todo <- TRUE
+    it <- 1
+    while (todo)
+    {
+      dummy <- array(NA, dim(maternal_genotype))
+      dummy[diffs] <- "1"
+      location <- which(!is.na(dummy), arr.ind=TRUE)
+      for (i in 1:nrow(location))
+      {
+        l <- location[i,]
+        extramaternal_genotype[l[1],l[2],l[3]] <- sample(names(allele_frequencies_per_msat[[l[3]]]), 1)
+      }
+      extramaternal_genotype <- apply(extramaternal_genotype, c(2,3), sort)
+      if (sum(extramaternal_genotype != maternal_genotype) == new_mother_distance) todo <- FALSE
+      it <- it + 1
+      if (it > maxit) stop("rejection sampling failed, too few unique alleles for requested distance?")
+    }
+  }
+
+  # simulate extra father
+  paternal_genotype <- core_colony$true_paternal_genotypes
+  extrapaternal_genotype <- paternal_genotype
+  maxit <- 1000
+  if (new_father_distance > 0){
+    diffs <- sample(1:length(paternal_genotype), new_father_distance)
+    todo <- TRUE
+    it <- 1
+    while (todo)
+    {
+      dummy <- array(NA, dim(paternal_genotype))
+      dummy[diffs] <- "1"
+      location <- which(!is.na(dummy), arr.ind=TRUE)
+      for (i in 1:nrow(location))
+      {
+        l <- location[i,]
+        extrapaternal_genotype[l[1],l[2],l[3]] <- sample(names(allele_frequencies_per_msat[[l[3]]]), 1)
+      }
+      if (sum(extrapaternal_genotype != paternal_genotype) == new_father_distance) todo <- FALSE
+      it <- it + 1
+      if (it > maxit) stop("rejection sampling failed, too few unique alleles for requested distance?")
+    }
+  }
+
+  # simulate extra sib group
+  offspring_in_extra_colony <- number_of_offspring - offspring_in_core_colony
+  extra_colony <- simulate_sibling_group_with_fixed_parental_genotypes (
+           maternal_genotypes = extramaternal_genotype,
+           paternal_genotypes = extrapaternal_genotype,
+           number_of_offspring = offspring_in_extra_colony, 
+           proportion_of_sperm_per_father = 1, 
+           allele_frequencies_per_msat = allele_frequencies_per_msat,
+           rate_of_allelic_dropout_per_locus = rep(rate_of_allelic_dropout,num_loci),
+           rate_of_allelic_mistyping_per_locus = rep(rate_of_allelic_mistyping,num_loci),
+           probability_of_missing_data = probability_of_missing_data)
+
+  # combine two groups; queen genotype is omitted in extra colony
+  library(abind)
+  core_colony <- abind(core_colony$observed_maternal_genotypes, core_colony$observed_offspring_genotypes, along=2)
+  extra_colony <- extra_colony$observed_offspring_genotypes
+  dimnames(core_colony)[[2]] <- paste0("core_", dimnames(core_colony)[[2]])
+  dimnames(extra_colony)[[2]] <- paste0("extra_", dimnames(extra_colony)[[2]])
+  combined <- abind(core_colony, extra_colony, along=2)
+  combined <- array(as.numeric(combined[]), dim(combined), dimnames=dimnames(combined))
+  maternal_genotype <- array(as.numeric(maternal_genotype[]), dim(maternal_genotype), dimnames=dimnames(maternal_genotype))
+  paternal_genotype <- array(as.numeric(paternal_genotype[]), dim(paternal_genotype), dimnames=dimnames(paternal_genotype))
+  extramaternal_genotype <- array(as.numeric(extramaternal_genotype[]), dim(extramaternal_genotype), dimnames=dimnames(extramaternal_genotype))
+  extrapaternal_genotype <- array(as.numeric(extrapaternal_genotype[]), dim(extrapaternal_genotype), dimnames=dimnames(extrapaternal_genotype))
+  attr(combined, "maternal_genotype") <- maternal_genotype[,,]
+  attr(combined, "paternal_genotype") <- paternal_genotype[,,]
+  attr(combined, "extramaternal_genotype") <- extramaternal_genotype[,,]
+  attr(combined, "extrapaternal_genotype") <- extrapaternal_genotype[,,]
+  combined
+}

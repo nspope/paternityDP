@@ -73,3 +73,11 @@ sample_parentage_and_error_rates_from_joint_posterior <- function(phenotypes, mo
     .Call(`_sydneyPaternity_sample_parentage_and_error_rates_from_joint_posterior`, phenotypes, mothers, fathers, holdouts, number_of_mcmc_samples, burn_in_samples, thinning_interval, global_genotyping_error_rates)
 }
 
+sample_parentage_and_error_rates_from_joint_posterior_alt <- function(phenotypes, mothers, fathers, concentration = 1., number_of_mcmc_samples = 1000L, burn_in_samples = 100L, thinning_interval = 1L, global_genotyping_error_rates = TRUE, sample_from_prior = FALSE, random_initialization = FALSE) {
+    .Call(`_sydneyPaternity_sample_parentage_and_error_rates_from_joint_posterior_alt`, phenotypes, mothers, fathers, concentration, number_of_mcmc_samples, burn_in_samples, thinning_interval, global_genotyping_error_rates, sample_from_prior, random_initialization)
+}
+
+sample_parentage_and_error_rates <- function(phenotypes, mother = 1L, burn_in = 0L, thinning_interval = 1L, number_of_mcmc_samples = 1000L, global_genotyping_error_rates = TRUE, concentration = 1., starting_error_rate = 0.01) {
+    .Call(`_sydneyPaternity_sample_parentage_and_error_rates`, phenotypes, mother, burn_in, thinning_interval, number_of_mcmc_samples, global_genotyping_error_rates, concentration, starting_error_rate)
+}
+
