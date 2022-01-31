@@ -2289,6 +2289,7 @@ double parentage_loglikelihood
 // [[Rcpp::export]]
 Rcpp::List sample_parentage_and_error_rates
  (arma::ucube phenotypes, 
+  arma::uvec maternity,
   const unsigned mother = 1,
   const unsigned burn_in = 0,
   const unsigned thinning_interval = 1,
@@ -2299,8 +2300,11 @@ Rcpp::List sample_parentage_and_error_rates
 {
   // samples from posterior distribution of full sib groups with Dirichlet process prior,
   // using algorithm 8 from Neal 2000 JCGS
+
+  // wait a damn minute. b/c we have observed the maternal phenotypes they should ALWAYS go in the likelihood, even when there are no offspring for that mother
   
   if (mother > phenotypes.n_cols || mother < 1) Rcpp::stop("1-based index of mother out of range");
+  if (maternity.n_elem != phenotypes.n_cols) Rcpp::stop("maternity vector wrong dimension");
 
   const unsigned max_iter = number_of_mcmc_samples;
   const unsigned num_loci = phenotypes.n_slices;
@@ -2319,10 +2323,12 @@ Rcpp::List sample_parentage_and_error_rates
   arma::ucube offspring_phenotypes = phenotypes; offspring_phenotypes.shed_col(mother-1);
 
   // initialize (could draw from prior instead)
-  arma::uvec paternity = arma::zeros<arma::uvec>(num_offspring);//this could be randomized
-  arma::uvec maternity = arma::zeros<arma::uvec>(num_offspring);//this could be randomized, but must include 0
-  arma::vec dropout_rate (num_loci); dropout_rate.fill(0.01);
-  arma::vec mistyping_rate (num_loci); mistyping_rate.fill(0.01);
+  //arma::uvec paternity = arma::zeros<arma::uvec>(num_offspring);//this could be randomized
+  //arma::uvec maternity = arma::zeros<arma::uvec>(num_offspring);//this could be randomized, but must include 0
+  maternity.shed_row(mother-1);
+  arma::uvec paternity = maternity;
+  arma::vec dropout_rate (num_loci); dropout_rate.fill(starting_error_rate);
+  arma::vec mistyping_rate (num_loci); mistyping_rate.fill(starting_error_rate);
 
   // storage
   arma::imat paternity_samples (num_offspring, max_iter);
@@ -2339,6 +2345,7 @@ Rcpp::List sample_parentage_and_error_rates
   }
 
   double deviance = 0.;
+  maternity = recode_to_contiguous_integers(maternity); //check that 0 is in maternity vector?
   paternity = recode_to_contiguous_integers(paternity);
   for (int iter=-int(burn_in); iter<int(max_iter); ++iter)
   {

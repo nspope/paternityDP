@@ -163,17 +163,6 @@ simulate_sibling_group <- function(number_of_offspring,
        )
 }
 
-perturb_paternity_vector <- function(paternity, number_of_changes = 1)
-{
-  unique_fathers <- unique(paternity)
-  paternity <- match(paternity, unique_fathers)
-  who_to_shift <- sample(1:length(paternity), number_of_changes)
-  paternity[who_to_shift] <- sample(1:(length(unique_fathers)+1), number_of_changes, replace=TRUE)
-  unique_fathers <- unique(paternity)
-  paternity <- match(paternity, unique_fathers)-1
-  paternity
-}
-
 genotype_array_to_txt <- function(genotype_array, filename)
 {
   ploidy <- dim(genotype_array)[1]
@@ -298,12 +287,12 @@ plot_genotyping_errors <- function(mcmc_paternity, my_genotype_data)
     theme(text=element_text(family="Garamond"), 
           axis.text.x=element_text(angle=90),
           panel.grid=element_blank(), legend.position="bottom") +
-xlab("Locus") + ylab("Sample") + 
-guides(fill=guide_colorbar("E[# Errors]", direction="horizontal", title.position="top")) +
-scale_fill_gradient(low="white", high="firebrick") +
-scale_x_discrete(expand=c(0,0)) +
-scale_y_discrete(expand=c(0,0)) +
-facet_grid(~type)
+    xlab("Locus") + ylab("Sample") + 
+    guides(fill=guide_colorbar("E[# Errors]", direction="horizontal", title.position="top")) +
+    scale_fill_gradient(low="white", high="firebrick") +
+    scale_x_discrete(expand=c(0,0)) +
+    scale_y_discrete(expand=c(0,0)) +
+    facet_grid(~type)
 }
 
 plot_posterior_number_of_fathers <- function(mcmc_paternity)
@@ -482,11 +471,12 @@ remove_loci_with_excessive_missingness <- function(genotypes, threshold)
   genotypes[,,prop_missing <= threshold]
 }
 
-remove_samples_with_excessive_missingness <- function(genotypes, threshold)
+remove_samples_with_excessive_missingness <- function(genotypes, threshold, always_keep = NA)
 {
   prop_missing <- apply(genotypes, 2, function(x) sum(is.na(x) | x == 0)/length(c(x)))
+  if (!is.na(always_keep)) retain <- grepl(always_keep, dimnames(genotypes)[[2]]) else retain <- rep(FALSE, length(prop_missing))
   cat("Dropped ", sum(prop_missing > threshold), " samples\n", sep="")
-  genotypes[,prop_missing <= threshold,]
+  genotypes[,prop_missing <= threshold | retain,]
 }
 
 remove_monomorphic_loci <- function(genotypes)
@@ -796,4 +786,131 @@ simulate_mixed_colony <- function(number_of_offspring, new_mother_distance, new_
   attr(combined, "extramaternal_genotype") <- extramaternal_genotype[,,]
   attr(combined, "extrapaternal_genotype") <- extrapaternal_genotype[,,]
   combined
+}
+
+sample_parentage_with_multiple_chains <- function(phenotypes, mother = 1, number_of_chains = 3, burn_in = 0, number_of_mcmc_samples = 1000, thinning_interval = 1)
+{
+  maternity <- group_by_ibs(phenotypes, mother)
+  fits <- lapply(1:number_of_chains, function(i) 
+    sample_parentage_and_error_rates(phenotypes,maternity=maternity,mother=mother,
+                                     burn_in=burn_in,number_of_mcmc_samples=number_of_mcmc_samples,
+                                     thinning_interval=thinning_interval))
+  attr(fits, "phenotypes") <- phenotypes
+  fits
+}
+
+plot_trace <- function(list_of_models)
+{
+  library(ggplot2)
+  df <- Reduce(rbind, lapply(1:length(list_of_models), function(i) data.frame(chain=i, iter=1:length(list_of_models[[i]]$deviance), loglik=-0.5*list_of_models[[i]]$deviance)))
+  ggplot(df) + geom_point(aes(x=iter, y=loglik, color=factor(chain))) + theme_bw() + xlab("MCMC iteration") + ylab("Log probability of offspring phenotypes") + theme(legend.position="none")
+}
+
+plot_parentage <- function(list_of_models, return_consensus_maternity = FALSE, return_extramaternity_probabilities = FALSE)
+{
+  library(ggplot2)
+  genotype_data <- attr(list_of_models, "phenotypes")
+  offspring <- which(!is.na(list_of_models[[1]]$maternity[,1]))
+  names(offspring) <- dimnames(genotype_data)[[2]][offspring]
+
+  extramaternity_prob <- matrix(0, length(offspring), 1)
+  maternity_matrix <- matrix(0, length(offspring), length(offspring))
+  number_of_mothers <- c()
+  for(j in 1:length(list_of_models))
+  {
+    for(i in 1:ncol(list_of_models[[j]]$maternity))
+    {
+      maternity_vector <- list_of_models[[j]]$maternity[offspring,i]
+      maternity_matrix <- maternity_matrix + paternity_vector_to_adjacency_matrix(list_of_models[[j]]$maternity[offspring,i])
+      extramaternity_prob <- extramaternity_prob + 1*(list_of_models[[j]]$maternity[offspring,i]>0)
+      number_of_mothers <- c(number_of_mothers, length(unique(maternity_vector[!is.na(maternity_vector)])))
+    }
+  }
+  extramaternity_prob <- extramaternity_prob / max(maternity_matrix)
+  maternity_matrix <- maternity_matrix / max(maternity_matrix)
+  rownames(maternity_matrix) <- colnames(maternity_matrix) <- names(offspring)
+  rownames(extramaternity_prob) <- names(offspring)
+  colnames(extramaternity_prob) <- c("Extramaternity")
+  if (return_extramaternity_probabilities) return(extramaternity_prob)
+
+  number_of_mothers <- table(number_of_mothers)
+  best_number_of_mothers <- as.numeric(names(number_of_mothers[which.max(number_of_mothers)]))
+  consensus_maternity <- matrix(cutree(hclust(as.dist(1-maternity_matrix)), best_number_of_mothers), length(offspring), 1)
+  rownames(consensus_maternity) <- colnames(maternity_matrix); colnames(consensus_maternity) <- "Maternity"
+  if (return_consensus_maternity) return(consensus_maternity)
+
+  paternity_matrix <- matrix(0, length(offspring), length(offspring))
+  for(j in 1:length(list_of_models))
+  {
+    for(i in 1:ncol(list_of_models[[j]]$paternity))
+    {
+      paternity_matrix <- paternity_matrix + paternity_vector_to_adjacency_matrix(list_of_models[[j]]$paternity[offspring,i])
+    }
+  }
+  paternity_matrix <- paternity_matrix / max(paternity_matrix)
+  rownames(paternity_matrix) <- colnames(paternity_matrix) <- names(offspring)
+
+  ord <- colnames(paternity_matrix)[hclust(1-as.dist(paternity_matrix))$order]
+
+  df_paternity <- as.data.frame(which(!is.na(paternity_matrix), arr.ind=TRUE))
+  df_paternity$probability <- c(paternity_matrix)
+  df_paternity$row <- rownames(paternity_matrix)[df_paternity$row]
+  df_paternity$col <- colnames(paternity_matrix)[df_paternity$col]
+  df_paternity$type <- 'Share father'
+  df_maternity <- as.data.frame(which(!is.na(maternity_matrix), arr.ind=TRUE))
+  df_maternity$probability <- c(maternity_matrix)
+  df_maternity$row <- rownames(maternity_matrix)[df_maternity$row]
+  df_maternity$col <- colnames(maternity_matrix)[df_maternity$col]
+  df_maternity$type <- 'Share mother'
+  df_extramaternity <- as.data.frame(which(!is.na(extramaternity_prob), arr.ind=TRUE))
+  df_extramaternity$probability <- c(extramaternity_prob)
+  df_extramaternity$row <- rownames(extramaternity_prob)[df_extramaternity$row]
+  df_extramaternity$col <- colnames(extramaternity_prob)[df_extramaternity$col]
+  df_extramaternity$type <- 'Floater'
+
+  df <- rbind(df_maternity, df_paternity, df_extramaternity)
+  df$row <- factor(df$row, levels=c(ord, "Extramaternity"))
+  df$col <- factor(df$col, levels=c(ord, "Extramaternity"))
+
+  ggplot(df) +
+    geom_tile(aes(y=row, x=col, fill=probability), color="black") +
+    scale_x_discrete(expand=c(0,0)) + scale_y_discrete(expand=c(0,0)) +
+    scale_fill_gradient(low="white", high="dodgerblue", limits=c(0,1)) +
+    theme_bw() + facet_grid(~type, scales="free_x", space="free") + 
+    theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1), axis.title=element_blank(), strip.background=element_blank(), text=element_text(family="Garamond"))
+}
+
+group_by_ibs <- function(phenotypes, mother, return_matrix=FALSE) #starting values for maternity vector
+{
+  shares <- matrix(0, dim(phenotypes)[2], dim(phenotypes)[2])
+  counts <- matrix(0, dim(phenotypes)[2], dim(phenotypes)[2])
+  for (i in 1:dim(phenotypes)[3])
+    for (j1 in 1:dim(phenotypes)[2])
+      for (j2 in 1:dim(phenotypes)[2])
+      {
+        a <- phenotypes[,j1,i]; b <- phenotypes[,j2,i]
+        if (all(!is.na(c(a,b))))
+        {
+          counts[j1,j2] <- counts[j1,j2] + 2
+          if (a[1] %in% b)
+          {
+            d <- which(b==a[1])
+            b <- b[-d]
+            shares[j1,j2] <- shares[j1,j2] + 1
+          }
+          if (a[2] %in% b)
+          {
+            shares[j1,j2] <- shares[j1,j2] + 1
+          }
+        }
+      }
+  ibs_matrix <- shares/counts
+  if (return_matrix) return(ibs_matrix)
+  init_maternity <- cutree(hclust(as.dist(1-ibs_matrix)),2)
+  init_maternity[init_maternity == init_maternity[mother]] <- 0
+  init_maternity2 <- init_maternity
+  unq <- unique(init_maternity)
+  for(i in 1:length(unq)) init_maternity2[init_maternity==unq[i]] <- i
+  init_maternity2-1
+  #make sure to have whatsit recode to contiguous integers
 }
