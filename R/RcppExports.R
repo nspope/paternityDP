@@ -77,7 +77,7 @@ sample_parentage_and_error_rates_from_joint_posterior_alt <- function(phenotypes
     .Call(`_sydneyPaternity_sample_parentage_and_error_rates_from_joint_posterior_alt`, phenotypes, mothers, fathers, concentration, number_of_mcmc_samples, burn_in_samples, thinning_interval, global_genotyping_error_rates, sample_from_prior, random_initialization)
 }
 
-sample_parentage_and_error_rates <- function(phenotypes, maternity, mother = 1L, burn_in = 0L, thinning_interval = 1L, number_of_mcmc_samples = 1000L, global_genotyping_error_rates = TRUE, concentration = 1., starting_error_rate = 0.01) {
-    .Call(`_sydneyPaternity_sample_parentage_and_error_rates`, phenotypes, maternity, mother, burn_in, thinning_interval, number_of_mcmc_samples, global_genotyping_error_rates, concentration, starting_error_rate)
+sample_parentage_and_error_rates <- function(phenotypes, maternity, mother = 1L, burn_in = 0L, thinning_interval = 1L, number_of_mcmc_samples = 1000L, global_genotyping_error_rates = TRUE, update_error_rates = TRUE, update_allele_frequencies = TRUE, concentration = 1., lambda_mother = 0., lambda_father = 0., starting_dropout_rate = 0.01, starting_mistyping_rate = 0.01) {
+    .Call(`_sydneyPaternity_sample_parentage_and_error_rates`, phenotypes, maternity, mother, burn_in, thinning_interval, number_of_mcmc_samples, global_genotyping_error_rates, update_error_rates, update_allele_frequencies, concentration, lambda_mother, lambda_father, starting_dropout_rate, starting_mistyping_rate)
 }
 

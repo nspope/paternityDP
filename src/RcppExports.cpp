@@ -291,8 +291,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // sample_parentage_and_error_rates
-Rcpp::List sample_parentage_and_error_rates(arma::ucube phenotypes, arma::uvec maternity, const unsigned mother, const unsigned burn_in, const unsigned thinning_interval, const unsigned number_of_mcmc_samples, const bool global_genotyping_error_rates, const double concentration, const double starting_error_rate);
-RcppExport SEXP _sydneyPaternity_sample_parentage_and_error_rates(SEXP phenotypesSEXP, SEXP maternitySEXP, SEXP motherSEXP, SEXP burn_inSEXP, SEXP thinning_intervalSEXP, SEXP number_of_mcmc_samplesSEXP, SEXP global_genotyping_error_ratesSEXP, SEXP concentrationSEXP, SEXP starting_error_rateSEXP) {
+Rcpp::List sample_parentage_and_error_rates(arma::ucube phenotypes, arma::uvec maternity, const unsigned mother, const unsigned burn_in, const unsigned thinning_interval, const unsigned number_of_mcmc_samples, const bool global_genotyping_error_rates, const bool update_error_rates, const bool update_allele_frequencies, const double concentration, const double lambda_mother, const double lambda_father, const double starting_dropout_rate, const double starting_mistyping_rate);
+RcppExport SEXP _sydneyPaternity_sample_parentage_and_error_rates(SEXP phenotypesSEXP, SEXP maternitySEXP, SEXP motherSEXP, SEXP burn_inSEXP, SEXP thinning_intervalSEXP, SEXP number_of_mcmc_samplesSEXP, SEXP global_genotyping_error_ratesSEXP, SEXP update_error_ratesSEXP, SEXP update_allele_frequenciesSEXP, SEXP concentrationSEXP, SEXP lambda_motherSEXP, SEXP lambda_fatherSEXP, SEXP starting_dropout_rateSEXP, SEXP starting_mistyping_rateSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -303,9 +303,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const unsigned >::type thinning_interval(thinning_intervalSEXP);
     Rcpp::traits::input_parameter< const unsigned >::type number_of_mcmc_samples(number_of_mcmc_samplesSEXP);
     Rcpp::traits::input_parameter< const bool >::type global_genotyping_error_rates(global_genotyping_error_ratesSEXP);
+    Rcpp::traits::input_parameter< const bool >::type update_error_rates(update_error_ratesSEXP);
+    Rcpp::traits::input_parameter< const bool >::type update_allele_frequencies(update_allele_frequenciesSEXP);
     Rcpp::traits::input_parameter< const double >::type concentration(concentrationSEXP);
-    Rcpp::traits::input_parameter< const double >::type starting_error_rate(starting_error_rateSEXP);
-    rcpp_result_gen = Rcpp::wrap(sample_parentage_and_error_rates(phenotypes, maternity, mother, burn_in, thinning_interval, number_of_mcmc_samples, global_genotyping_error_rates, concentration, starting_error_rate));
+    Rcpp::traits::input_parameter< const double >::type lambda_mother(lambda_motherSEXP);
+    Rcpp::traits::input_parameter< const double >::type lambda_father(lambda_fatherSEXP);
+    Rcpp::traits::input_parameter< const double >::type starting_dropout_rate(starting_dropout_rateSEXP);
+    Rcpp::traits::input_parameter< const double >::type starting_mistyping_rate(starting_mistyping_rateSEXP);
+    rcpp_result_gen = Rcpp::wrap(sample_parentage_and_error_rates(phenotypes, maternity, mother, burn_in, thinning_interval, number_of_mcmc_samples, global_genotyping_error_rates, update_error_rates, update_allele_frequencies, concentration, lambda_mother, lambda_father, starting_dropout_rate, starting_mistyping_rate));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -330,7 +335,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_sydneyPaternity_sample_mendelian_genotype", (DL_FUNC) &_sydneyPaternity_sample_mendelian_genotype, 6},
     {"_sydneyPaternity_sample_parentage_and_error_rates_from_joint_posterior", (DL_FUNC) &_sydneyPaternity_sample_parentage_and_error_rates_from_joint_posterior, 8},
     {"_sydneyPaternity_sample_parentage_and_error_rates_from_joint_posterior_alt", (DL_FUNC) &_sydneyPaternity_sample_parentage_and_error_rates_from_joint_posterior_alt, 10},
-    {"_sydneyPaternity_sample_parentage_and_error_rates", (DL_FUNC) &_sydneyPaternity_sample_parentage_and_error_rates, 9},
+    {"_sydneyPaternity_sample_parentage_and_error_rates", (DL_FUNC) &_sydneyPaternity_sample_parentage_and_error_rates, 14},
     {NULL, NULL, 0}
 };
 

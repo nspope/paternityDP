@@ -2295,8 +2295,13 @@ Rcpp::List sample_parentage_and_error_rates
   const unsigned thinning_interval = 1,
   const unsigned number_of_mcmc_samples = 1000,
   const bool global_genotyping_error_rates = true,
+  const bool update_error_rates = true,
+  const bool update_allele_frequencies = true,
   const double concentration = 1.,
-  const double starting_error_rate = 0.01)
+  const double lambda_mother = 0.,
+  const double lambda_father = 0.,
+  const double starting_dropout_rate = 0.01,
+  const double starting_mistyping_rate = 0.01)
 {
   // samples from posterior distribution of full sib groups with Dirichlet process prior,
   // using algorithm 8 from Neal 2000 JCGS
@@ -2327,8 +2332,8 @@ Rcpp::List sample_parentage_and_error_rates
   //arma::uvec maternity = arma::zeros<arma::uvec>(num_offspring);//this could be randomized, but must include 0
   maternity.shed_row(mother-1);
   arma::uvec paternity = maternity;
-  arma::vec dropout_rate (num_loci); dropout_rate.fill(starting_error_rate);
-  arma::vec mistyping_rate (num_loci); mistyping_rate.fill(starting_error_rate);
+  arma::vec dropout_rate (num_loci); dropout_rate.fill(starting_dropout_rate);
+  arma::vec mistyping_rate (num_loci); mistyping_rate.fill(starting_mistyping_rate);
 
   // storage
   arma::imat paternity_samples (num_offspring, max_iter);
@@ -2400,9 +2405,23 @@ Rcpp::List sample_parentage_and_error_rates
               // TODO would be useful to have a way to sample from the prior
               if (alpha > 0.)
               {
-                log_prior.at(father,mother) = offspring_per_mating.at(father,mother) > 0 ?
+                log_prior.at(father,mother) += offspring_per_mating.at(father,mother) > 0 ?
                   log(double(offspring_per_mating.at(father,mother))) - log(double(num_offspring)-1.+alpha): 
                   log(alpha) - log(double(new_fathers)) - log(double(num_offspring)-1.+alpha);
+              }
+              if (lambda_mother > 0.)
+              {
+                unsigned num_mother = arma::accu(offspring_per_mother > 0)+1; //+1 because its nonzero
+                log_prior.at(father,mother) += offspring_per_mother.at(mother) > 0 ?
+                  (num_mother)*log(lambda_mother)-lambda_mother-std::lgamma(num_mother+1) :
+                  (num_mother+1)*log(lambda_mother)-lambda_mother-std::lgamma(num_mother+2) ;
+              }
+              if (lambda_father > 0.)
+              {
+                unsigned num_father = arma::accu(offspring_per_father > 0)+1; //+1 because its nonzero
+                log_prior.at(father,mother) += offspring_per_father.at(father) > 0 ?
+                  (num_father)*log(lambda_father)-lambda_father-std::lgamma(num_father+1) :
+                  (num_father+1)*log(lambda_father)-lambda_father-std::lgamma(num_father+2) ;
               }
             } else { log_likelihood.at(father,mother) = -arma::datum::inf; }
           } 
@@ -2443,19 +2462,25 @@ Rcpp::List sample_parentage_and_error_rates
         }
 
         // update error rates
-        global_dropouts += arma::accu(dropouts); global_mistypes += arma::accu(mistypes);
-        global_heterozygous += arma::accu(heterozygous); global_nonmissing += arma::accu(nonmissing);
-        dropout_rate[locus] = 0.5 * R::rbeta(1. + arma::accu(dropouts), 1. + arma::accu(heterozygous) - arma::accu(dropouts));
-        mistyping_rate[locus] = R::rbeta(1. + arma::accu(mistypes), 1. + arma::accu(nonmissing) - arma::accu(mistypes));
+        if (update_error_rates)
+        {
+          global_dropouts += arma::accu(dropouts); global_mistypes += arma::accu(mistypes);
+          global_heterozygous += arma::accu(heterozygous); global_nonmissing += arma::accu(nonmissing);
+          dropout_rate[locus] = 0.5 * R::rbeta(1. + arma::accu(dropouts), 1. + arma::accu(heterozygous) - arma::accu(dropouts));
+          mistyping_rate[locus] = R::rbeta(1. + arma::accu(mistypes), 1. + arma::accu(nonmissing) - arma::accu(mistypes));
+        }
 
         // update allele frequencies
-        for (unsigned allele=0; allele<allele_frequencies[locus].n_elem; ++allele)
+        if (update_allele_frequencies)
         {
-          allele_frequencies[locus][allele] = R::rgamma(1. + allele_counts[allele], 1.);
+          for (unsigned allele=0; allele<allele_frequencies[locus].n_elem; ++allele)
+          {
+            allele_frequencies[locus][allele] = R::rgamma(1. + allele_counts[allele], 1.);
+          }
+          allele_frequencies[locus] /= arma::accu(allele_frequencies[locus]);
         }
-        allele_frequencies[locus] /= arma::accu(allele_frequencies[locus]);
       }
-      if (global_genotyping_error_rates)
+      if (update_error_rates && global_genotyping_error_rates)
       {
         // overwrite per-locus rates with global rate
         dropout_rate.fill(0.5 * R::rbeta(1. + global_dropouts, 1. + global_heterozygous - global_dropouts));

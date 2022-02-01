@@ -788,12 +788,19 @@ simulate_mixed_colony <- function(number_of_offspring, new_mother_distance, new_
   combined
 }
 
-sample_parentage_with_multiple_chains <- function(phenotypes, mother = 1, number_of_chains = 3, burn_in = 0, number_of_mcmc_samples = 1000, thinning_interval = 1)
+sample_parentage_with_multiple_chains <- function(phenotypes, mother = 1, number_of_chains = 3, burn_in = 0, number_of_mcmc_samples = 1000, thinning_interval = 1, maternity = NA, lambda_mother = 0., lambda_father = 0., alpha = 1., mistyping_rate = 0.01, dropout_rate = 0.01, update_error_rates = TRUE, update_allele_frequencies = TRUE)
 {
-  maternity <- group_by_ibs(phenotypes, mother)
+  if (all(is.na(maternity))) maternity <- rep(0, ncol(phenotypes))
   fits <- lapply(1:number_of_chains, function(i) 
     sample_parentage_and_error_rates(phenotypes,maternity=maternity,mother=mother,
                                      burn_in=burn_in,number_of_mcmc_samples=number_of_mcmc_samples,
+                                     concentration = alpha,
+                                     lambda_mother = lambda_mother,
+                                     lambda_father = lambda_father,
+                                     starting_mistyping_rate = mistyping_rate,
+                                     starting_dropout_rate = dropout_rate,
+                                     update_error_rates = update_error_rates,
+                                     update_allele_frequencies = update_allele_frequencies,
                                      thinning_interval=thinning_interval))
   attr(fits, "phenotypes") <- phenotypes
   fits
