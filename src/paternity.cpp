@@ -760,7 +760,9 @@ Rcpp::List sample_paternity_and_error_rates_from_joint_posterior
   const unsigned mother = 1,
   const unsigned number_of_mcmc_samples = 1000,
   const bool global_genotyping_error_rates = true,
-  const double concentration = 1.)
+  const double concentration = 1.,
+  const bool update_error_rates = true,
+  const bool update_allele_frequencies = true)
 {
   // samples from posterior distribution of full sib groups with Dirichlet process prior,
   // using algorithm 8 from Neal 2000 JCGS with m = 1
@@ -872,18 +874,24 @@ Rcpp::List sample_paternity_and_error_rates_from_joint_posterior
       }
 
       // update error rates
-      global_dropout_counts += error_counts[0]; global_mistype_counts += error_counts[1];
-      dropout_rate[locus] = 0.5 * R::rbeta(1. + error_counts[0][0], 1. + error_counts[0][1]);
-      mistyping_rate[locus] = R::rbeta(1. + error_counts[1][0], 1. + error_counts[1][1]);
+      if (update_error_rates)
+      {
+        global_dropout_counts += error_counts[0]; global_mistype_counts += error_counts[1];
+        dropout_rate[locus] = 0.5 * R::rbeta(1. + error_counts[0][0], 1. + error_counts[0][1]);
+        mistyping_rate[locus] = R::rbeta(1. + error_counts[1][0], 1. + error_counts[1][1]);
+      }
 
       // update allele frequencies
-      for (unsigned allele=0; allele<allele_frequencies[locus].n_elem; ++allele)
+      if (update_allele_frequencies)
       {
-        allele_frequencies[locus][allele] = R::rgamma(1. + error_counts[2][allele], 1.);
+        for (unsigned allele=0; allele<allele_frequencies[locus].n_elem; ++allele)
+        {
+          allele_frequencies[locus][allele] = R::rgamma(1. + error_counts[2][allele], 1.);
+        }
+        allele_frequencies[locus] /= arma::accu(allele_frequencies[locus]);
       }
-      allele_frequencies[locus] /= arma::accu(allele_frequencies[locus]);
     }
-    if (global_genotyping_error_rates)
+    if (update_error_rates && global_genotyping_error_rates)
     {
       // overwrite per-locus rates with global rate
       dropout_rate.fill(0.5 * R::rbeta(1. + global_dropout_counts[0], 1. + global_dropout_counts[1]));

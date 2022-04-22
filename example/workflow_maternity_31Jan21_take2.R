@@ -1,15 +1,14 @@
 library(sydneyPaternity)
 
 #---1. Load the genotype data into an array
-genotype_data <- genotype_array_from_txt("Colony4_Genotypes.txt")
+genotype_data <- genotype_array_from_txt("Colony20_Genotypes.txt")
 genotype_data <- remove_loci_with_excessive_missingness(genotype_data, 0.5) #drop loci w/ >50% missing loci
 genotype_data <- remove_samples_with_excessive_missingness(genotype_data, 0.5, always_keep = "Qu") #drop samples w/ >50% missing, retain samples with "Qu" in name
 genotype_data <- remove_monomorphic_loci(genotype_data) #drop loci w/ 1 allele
 the_queen <- grep("Qu", dimnames(genotype_data)[[2]]) #find queen index (sample name with "Qu" in it)
 
 #---2. Use cross-validation to check for multiple maternity (this can take quite awhile to run)
-multimaternity_fit <- sample_parentage_with_multiple_chains(genotype_data, mother=the_queen, number_of_chains=3, thinning_interval=1, burn_in=0, number_of_mcmc_samples=1000, lambda_mother=0., lambda_father=0.0, alpha=1., maternity=rep(0,ncol(genotype_data)), update_error_rates=TRUE, update_allele_frequencies=FALSE)
-lapply(multimaternity_fit, function(x) table(apply(x$paternity, 2, function(z) length(unique(z[!is.na(z)])))))
+multimaternity_fit <- sample_parentage_with_multiple_chains(genotype_data, mother=the_queen, number_of_chains=3, thinning_interval=10, burn_in=0, number_of_mcmc_samples=1000, update_allele_frequencies=FALSE)
 plot_trace(multimaternity_fit) #check MCMC convergence
 plot_parentage(multimaternity_fit) #we can divvy up "mixed" colonies based on this
 

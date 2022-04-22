@@ -153,8 +153,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // sample_paternity_and_error_rates_from_joint_posterior
-Rcpp::List sample_paternity_and_error_rates_from_joint_posterior(arma::ucube phenotypes, const unsigned mother, const unsigned number_of_mcmc_samples, const bool global_genotyping_error_rates, const double concentration);
-RcppExport SEXP _sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior(SEXP phenotypesSEXP, SEXP motherSEXP, SEXP number_of_mcmc_samplesSEXP, SEXP global_genotyping_error_ratesSEXP, SEXP concentrationSEXP) {
+Rcpp::List sample_paternity_and_error_rates_from_joint_posterior(arma::ucube phenotypes, const unsigned mother, const unsigned number_of_mcmc_samples, const bool global_genotyping_error_rates, const double concentration, const bool update_error_rates, const bool update_allele_frequencies);
+RcppExport SEXP _sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior(SEXP phenotypesSEXP, SEXP motherSEXP, SEXP number_of_mcmc_samplesSEXP, SEXP global_genotyping_error_ratesSEXP, SEXP concentrationSEXP, SEXP update_error_ratesSEXP, SEXP update_allele_frequenciesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -163,7 +163,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const unsigned >::type number_of_mcmc_samples(number_of_mcmc_samplesSEXP);
     Rcpp::traits::input_parameter< const bool >::type global_genotyping_error_rates(global_genotyping_error_ratesSEXP);
     Rcpp::traits::input_parameter< const double >::type concentration(concentrationSEXP);
-    rcpp_result_gen = Rcpp::wrap(sample_paternity_and_error_rates_from_joint_posterior(phenotypes, mother, number_of_mcmc_samples, global_genotyping_error_rates, concentration));
+    Rcpp::traits::input_parameter< const bool >::type update_error_rates(update_error_ratesSEXP);
+    Rcpp::traits::input_parameter< const bool >::type update_allele_frequencies(update_allele_frequenciesSEXP);
+    rcpp_result_gen = Rcpp::wrap(sample_paternity_and_error_rates_from_joint_posterior(phenotypes, mother, number_of_mcmc_samples, global_genotyping_error_rates, concentration, update_error_rates, update_allele_frequencies));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -326,7 +328,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_sydneyPaternity_optimize_paternity_given_error_rates", (DL_FUNC) &_sydneyPaternity_optimize_paternity_given_error_rates, 4},
     {"_sydneyPaternity_loglikelihood_of_error_rates_given_paternity", (DL_FUNC) &_sydneyPaternity_loglikelihood_of_error_rates_given_paternity, 4},
     {"_sydneyPaternity_collapse_alleles_and_generate_prior_wrapper", (DL_FUNC) &_sydneyPaternity_collapse_alleles_and_generate_prior_wrapper, 3},
-    {"_sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior", (DL_FUNC) &_sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior, 5},
+    {"_sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior", (DL_FUNC) &_sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior, 7},
     {"_sydneyPaternity_sample_matrix", (DL_FUNC) &_sydneyPaternity_sample_matrix, 1},
     {"_sydneyPaternity_select_columns_from_cube", (DL_FUNC) &_sydneyPaternity_select_columns_from_cube, 2},
     {"_sydneyPaternity_phenotype_error_model", (DL_FUNC) &_sydneyPaternity_phenotype_error_model, 5},
