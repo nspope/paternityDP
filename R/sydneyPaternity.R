@@ -1,5 +1,4 @@
-simulate_sibling_group <- function(number_of_offspring, 
-                                   proportion_of_sperm_per_father, 
+simulate_sibling_group <- function(number_of_offspring_per_father, 
                                    allele_frequencies_per_msat,
                                    rate_of_allelic_dropout_per_locus,
                                    rate_of_allelic_mistyping_per_locus,
@@ -8,7 +7,7 @@ simulate_sibling_group <- function(number_of_offspring,
   number_of_loci <- length(allele_frequencies_per_msat)
   number_of_msats <- length(allele_frequencies_per_msat)
   number_of_alleles_per_msat <- sapply(allele_frequencies_per_msat, length)
-  number_of_fathers <- length(proportion_of_sperm_per_father)
+  number_of_fathers <- length(number_of_offspring_per_father)
   number_of_mothers <- 1 #for now, restrict to single mother per sib-group
   maternal_ploidy <- 2
   paternal_ploidy <- 1
@@ -19,6 +18,7 @@ simulate_sibling_group <- function(number_of_offspring,
   probability_of_allelic_mistyping_per_locus <- rate_of_allelic_mistyping_per_locus
 
   # check inputs
+  number_of_offspring <- sum(number_of_offspring_per_father)
   stopifnot(number_of_offspring >= 1)
   stopifnot(number_of_fathers >= 1)
   stopifnot(length(probability_of_allelic_dropout_per_locus) == number_of_loci)
@@ -42,10 +42,7 @@ simulate_sibling_group <- function(number_of_offspring,
   names(offspring_paternity) <- names(offspring_maternity) <- paste0("offspring",1:number_of_offspring)
 
   # simulate paternity and maternity of offspring
-  offspring_paternity[] <- sample(1:number_of_fathers,
-                                  size=number_of_offspring,
-                                  prob=proportion_of_sperm_per_father,
-                                  replace=TRUE)
+  offspring_paternity[] <- rep(1:number_of_fathers, number_of_offspring_per_father)
   offspring_maternity[] <- 1 #for now all sibs have same mother
 
   for (locus in 1:number_of_loci)
@@ -701,8 +698,7 @@ simulate_mixed_colony <- function(number_of_offspring, new_mother_distance, new_
 
   # simulate core colony
   offspring_in_core_colony <- floor(number_of_offspring * new_parents_proportion)
-  core_colony <- simulate_sibling_group (number_of_offspring = offspring_in_core_colony, 
-                          proportion_of_sperm_per_father = 1,
+  core_colony <- simulate_sibling_group (number_of_offspring_per_father = c(offspring_in_core_colony), 
                           allele_frequencies_per_msat = allele_frequencies_per_msat,
                           rate_of_allelic_dropout_per_locus = rep(rate_of_allelic_dropout, num_loci),
                           rate_of_allelic_mistyping_per_locus = rep(rate_of_allelic_mistyping, num_loci),
