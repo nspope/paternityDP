@@ -91,7 +91,3 @@ table(apply(replicate(10000, sydneyPaternity:::simulate_genotyping_errors(c(1,2)
 table(apply(replicate(10000, sydneyPaternity:::simulate_genotyping_errors(c(2,2),1,2,4,E1,E2)),3,paste,collapse=":"))/10000
 table(apply(replicate(10000, sydneyPaternity:::simulate_genotyping_errors(c(1,4),2,3,4,E1,E2)),3,paste,collapse=":"))/10000
 table(apply(replicate(10000, sydneyPaternity:::simulate_genotyping_errors(c(1,2),2,3,4,E1,E2)),3,paste,collapse=":"))/10000
-
-#TODO: fix genotype simulator (R side), make it match the obove prrobs
-#      add in sampler for error rates
-#      allow option in recoding to collapse unused alleles
