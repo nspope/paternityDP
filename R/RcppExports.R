@@ -41,8 +41,8 @@ collapse_alleles_and_generate_prior_wrapper <- function(phenotypes, mother = 1L,
     .Call(`_sydneyPaternity_collapse_alleles_and_generate_prior_wrapper`, phenotypes, mother, add_unsampled_allele)
 }
 
-sample_paternity_and_error_rates_from_joint_posterior <- function(phenotypes, mother = 1L, number_of_mcmc_samples = 1000L, global_genotyping_error_rates = TRUE, concentration = 1., update_error_rates = TRUE, update_allele_frequencies = TRUE) {
-    .Call(`_sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior`, phenotypes, mother, number_of_mcmc_samples, global_genotyping_error_rates, concentration, update_error_rates, update_allele_frequencies)
+sample_paternity_and_error_rates_from_joint_posterior <- function(phenotypes, mother = 1L, number_of_mcmc_samples = 1000L, global_genotyping_error_rates = TRUE, concentration = 1., update_error_rates = TRUE, update_allele_frequencies = FALSE, add_unsampled_allele = TRUE) {
+    .Call(`_sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior`, phenotypes, mother, number_of_mcmc_samples, global_genotyping_error_rates, concentration, update_error_rates, update_allele_frequencies, add_unsampled_allele)
 }
 
 sample_matrix <- function(probabilities) {

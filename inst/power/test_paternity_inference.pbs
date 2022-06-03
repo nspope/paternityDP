@@ -1,0 +1,29 @@
+#!/bin/bash
+#PBS -l nodes=1:ppn=24:rhel7 #how many compute nodes; how many cores/node; what type of node
+#PBS -l walltime=8:00:00   #how long to run; HH:MM:SS
+#PBS -l pmem=4gb           #memory per core
+#PBS -A open                #what allocation to use
+#PBS -j oe                  #print stdin/stderr to same file
+
+cd $PBS_O_WORKDIR
+export OMP_NUM_THREADS=24
+
+WD=`pwd -P`
+
+module load parallel
+for ERR in 0.01 0.05 0.10; do
+for WHICH in {1..100}; do
+if [ ! -f _${WHICH}_${ERR}.log ]; then
+  echo "Rscript test_paternity_inference.R $WHICH $ERR &>_${WHICH}_${ERR}.log"
+fi
+done
+done >test_paternity_inference.jobfile
+parallel --jobs $OMP_NUM_THREADS <test_paternity_inference.jobfile
+
+echo '
+fl <- list.files(pattern="power_.+RData")
+power <- data.frame()
+for(i in fl){load(i);power<-rbind(power,DF)}
+save(power,file="power.RData")
+' | R --slave
+

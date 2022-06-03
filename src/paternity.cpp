@@ -762,7 +762,8 @@ Rcpp::List sample_paternity_and_error_rates_from_joint_posterior
   const bool global_genotyping_error_rates = true,
   const double concentration = 1.,
   const bool update_error_rates = true,
-  const bool update_allele_frequencies = true)
+  const bool update_allele_frequencies = false,
+  const bool add_unsampled_allele = true)
 {
   // samples from posterior distribution of full sib groups with Dirichlet process prior,
   // using algorithm 8 from Neal 2000 JCGS with m = 1
@@ -779,7 +780,7 @@ Rcpp::List sample_paternity_and_error_rates_from_joint_posterior
   const double delta = 1.; //allele frequency concentration parameter
   const arma::vec dropout_rate_prior = {{1.,1.}}; //beta(number of dropout homozygotes, number of heterozygotes)
   const arma::vec mistyping_rate_prior = {{1.,1.}}; //beta(number of mistypes, number of correct calls)
-  std::vector<arma::vec> allele_frequencies = collapse_alleles_and_generate_genotype_prior(phenotypes, true);
+  std::vector<arma::vec> allele_frequencies = collapse_alleles_and_generate_genotype_prior(phenotypes, add_unsampled_allele);
 
   // calculate coefficients needed for the MFM prior
   const unsigned max_number_of_fathers = num_offspring;
