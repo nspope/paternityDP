@@ -1,25 +1,25 @@
-\name{sydneyPaternity-package}
-\alias{sydneyPaternity-package}
-\alias{sydneyPaternity}
+\name{paternityDP-package}
+\alias{paternityDP-package}
+\alias{paternityDP}
 \docType{package}
 \title{
-\packageTitle{sydneyPaternity}
+\packageTitle{paternityDP}
 }
 \description{
-\packageDescription{sydneyPaternity}
+\packageDescription{paternityDP}
 }
 \details{
 
 The DESCRIPTION file:
-\packageDESCRIPTION{sydneyPaternity}
-\packageIndices{sydneyPaternity}
+\packageDESCRIPTION{paternityDP}
+\packageIndices{paternityDP}
 ~~ An overview of how to use the package, including the most important ~~
 ~~ functions ~~
 }
 \author{
-\packageAuthor{sydneyPaternity}
+\packageAuthor{paternityDP}
 
-Maintainer: \packageMaintainer{sydneyPaternity}
+Maintainer: \packageMaintainer{paternityDP}
 }
 \references{
 ~~ Literature or other references for background information ~~

@@ -2,82 +2,82 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 log_ascending_factorial <- function(x, r) {
-    .Call(`_sydneyPaternity_log_ascending_factorial`, x, r)
+    .Call(`_paternityDP_log_ascending_factorial`, x, r)
 }
 
 log_descending_factorial <- function(x, r) {
-    .Call(`_sydneyPaternity_log_descending_factorial`, x, r)
+    .Call(`_paternityDP_log_descending_factorial`, x, r)
 }
 
 log_uniform_MFM_prior <- function(n, t, gamma, max_number_of_components) {
-    .Call(`_sydneyPaternity_log_uniform_MFM_prior`, n, t, gamma, max_number_of_components)
+    .Call(`_paternityDP_log_uniform_MFM_prior`, n, t, gamma, max_number_of_components)
 }
 
 genotyping_error_model <- function(phenotype, genotype0, genotype1, number_of_alleles, dropout_rate, mistyping_rate) {
-    .Call(`_sydneyPaternity_genotyping_error_model`, phenotype, genotype0, genotype1, number_of_alleles, dropout_rate, mistyping_rate)
+    .Call(`_paternityDP_genotyping_error_model`, phenotype, genotype0, genotype1, number_of_alleles, dropout_rate, mistyping_rate)
 }
 
 genotyping_error_model_class <- function(phenotype, genotype0, genotype1) {
-    .Call(`_sydneyPaternity_genotyping_error_model_class`, phenotype, genotype0, genotype1)
+    .Call(`_paternityDP_genotyping_error_model_class`, phenotype, genotype0, genotype1)
 }
 
 simulate_genotyping_errors <- function(phenotype, genotype0, genotype1, number_of_alleles, dropout_rate, mistyping_rate) {
-    .Call(`_sydneyPaternity_simulate_genotyping_errors`, phenotype, genotype0, genotype1, number_of_alleles, dropout_rate, mistyping_rate)
+    .Call(`_paternityDP_simulate_genotyping_errors`, phenotype, genotype0, genotype1, number_of_alleles, dropout_rate, mistyping_rate)
 }
 
 sample_error_rates_given_paternity <- function(phenotypes, paternity, mother = 1L, number_of_mcmc_samples = 1000L, global_genotyping_error_rates = FALSE, random_allele_frequencies = TRUE, add_unsampled_allele = TRUE) {
-    .Call(`_sydneyPaternity_sample_error_rates_given_paternity`, phenotypes, paternity, mother, number_of_mcmc_samples, global_genotyping_error_rates, random_allele_frequencies, add_unsampled_allele)
+    .Call(`_paternityDP_sample_error_rates_given_paternity`, phenotypes, paternity, mother, number_of_mcmc_samples, global_genotyping_error_rates, random_allele_frequencies, add_unsampled_allele)
 }
 
 optimize_paternity_given_error_rates <- function(phenotypes, dropout_rate, mistyping_rate, mother = 1L) {
-    .Call(`_sydneyPaternity_optimize_paternity_given_error_rates`, phenotypes, dropout_rate, mistyping_rate, mother)
+    .Call(`_paternityDP_optimize_paternity_given_error_rates`, phenotypes, dropout_rate, mistyping_rate, mother)
 }
 
 loglikelihood_of_error_rates_given_paternity <- function(phenotypes, paternity, grid_of_error_rates, mother = 1L) {
-    .Call(`_sydneyPaternity_loglikelihood_of_error_rates_given_paternity`, phenotypes, paternity, grid_of_error_rates, mother)
+    .Call(`_paternityDP_loglikelihood_of_error_rates_given_paternity`, phenotypes, paternity, grid_of_error_rates, mother)
 }
 
 collapse_alleles_and_generate_prior_wrapper <- function(phenotypes, mother = 1L, add_unsampled_allele = FALSE) {
-    .Call(`_sydneyPaternity_collapse_alleles_and_generate_prior_wrapper`, phenotypes, mother, add_unsampled_allele)
+    .Call(`_paternityDP_collapse_alleles_and_generate_prior_wrapper`, phenotypes, mother, add_unsampled_allele)
 }
 
 sample_paternity_and_error_rates_from_joint_posterior <- function(phenotypes, mother = 1L, number_of_mcmc_samples = 1000L, global_genotyping_error_rates = TRUE, concentration = 1., update_error_rates = TRUE, update_allele_frequencies = FALSE, add_unsampled_allele = TRUE) {
-    .Call(`_sydneyPaternity_sample_paternity_and_error_rates_from_joint_posterior`, phenotypes, mother, number_of_mcmc_samples, global_genotyping_error_rates, concentration, update_error_rates, update_allele_frequencies, add_unsampled_allele)
+    .Call(`_paternityDP_sample_paternity_and_error_rates_from_joint_posterior`, phenotypes, mother, number_of_mcmc_samples, global_genotyping_error_rates, concentration, update_error_rates, update_allele_frequencies, add_unsampled_allele)
 }
 
 sample_matrix <- function(probabilities) {
-    .Call(`_sydneyPaternity_sample_matrix`, probabilities)
+    .Call(`_paternityDP_sample_matrix`, probabilities)
 }
 
 select_columns_from_cube <- function(input, which) {
-    .Call(`_sydneyPaternity_select_columns_from_cube`, input, which)
+    .Call(`_paternityDP_select_columns_from_cube`, input, which)
 }
 
 phenotype_error_model <- function(phenotype, genotype, number_of_alleles, dropout_rate, mistyping_rate) {
-    .Call(`_sydneyPaternity_phenotype_error_model`, phenotype, genotype, number_of_alleles, dropout_rate, mistyping_rate)
+    .Call(`_paternityDP_phenotype_error_model`, phenotype, genotype, number_of_alleles, dropout_rate, mistyping_rate)
 }
 
 sample_phenotype_errors <- function(phenotype, genotype, number_of_alleles, dropout_rate, mistyping_rate) {
-    .Call(`_sydneyPaternity_sample_phenotype_errors`, phenotype, genotype, number_of_alleles, dropout_rate, mistyping_rate)
+    .Call(`_paternityDP_sample_phenotype_errors`, phenotype, genotype, number_of_alleles, dropout_rate, mistyping_rate)
 }
 
 mendelian_genotype_model <- function(offspring_phenotype, maternal_genotype, paternal_genotype, number_of_alleles, dropout_rate, mistyping_rate) {
-    .Call(`_sydneyPaternity_mendelian_genotype_model`, offspring_phenotype, maternal_genotype, paternal_genotype, number_of_alleles, dropout_rate, mistyping_rate)
+    .Call(`_paternityDP_mendelian_genotype_model`, offspring_phenotype, maternal_genotype, paternal_genotype, number_of_alleles, dropout_rate, mistyping_rate)
 }
 
 sample_mendelian_genotype <- function(offspring_phenotype, maternal_genotype, paternal_genotype, number_of_alleles, dropout_rate, mistyping_rate) {
-    .Call(`_sydneyPaternity_sample_mendelian_genotype`, offspring_phenotype, maternal_genotype, paternal_genotype, number_of_alleles, dropout_rate, mistyping_rate)
+    .Call(`_paternityDP_sample_mendelian_genotype`, offspring_phenotype, maternal_genotype, paternal_genotype, number_of_alleles, dropout_rate, mistyping_rate)
 }
 
 sample_parentage_and_error_rates_from_joint_posterior <- function(phenotypes, mothers, fathers, holdouts, number_of_mcmc_samples = 1000L, burn_in_samples = 100L, thinning_interval = 1L, global_genotyping_error_rates = TRUE) {
-    .Call(`_sydneyPaternity_sample_parentage_and_error_rates_from_joint_posterior`, phenotypes, mothers, fathers, holdouts, number_of_mcmc_samples, burn_in_samples, thinning_interval, global_genotyping_error_rates)
+    .Call(`_paternityDP_sample_parentage_and_error_rates_from_joint_posterior`, phenotypes, mothers, fathers, holdouts, number_of_mcmc_samples, burn_in_samples, thinning_interval, global_genotyping_error_rates)
 }
 
 sample_parentage_and_error_rates_from_joint_posterior_alt <- function(phenotypes, mothers, fathers, concentration = 1., number_of_mcmc_samples = 1000L, burn_in_samples = 100L, thinning_interval = 1L, global_genotyping_error_rates = TRUE, sample_from_prior = FALSE, random_initialization = FALSE) {
-    .Call(`_sydneyPaternity_sample_parentage_and_error_rates_from_joint_posterior_alt`, phenotypes, mothers, fathers, concentration, number_of_mcmc_samples, burn_in_samples, thinning_interval, global_genotyping_error_rates, sample_from_prior, random_initialization)
+    .Call(`_paternityDP_sample_parentage_and_error_rates_from_joint_posterior_alt`, phenotypes, mothers, fathers, concentration, number_of_mcmc_samples, burn_in_samples, thinning_interval, global_genotyping_error_rates, sample_from_prior, random_initialization)
 }
 
 sample_parentage_and_error_rates <- function(phenotypes, maternity, mother = 1L, burn_in = 0L, thinning_interval = 1L, number_of_mcmc_samples = 1000L, global_genotyping_error_rates = TRUE, update_error_rates = TRUE, update_allele_frequencies = TRUE, concentration = 1., lambda_mother = 0., lambda_father = 0., starting_dropout_rate = 0.01, starting_mistyping_rate = 0.01) {
-    .Call(`_sydneyPaternity_sample_parentage_and_error_rates`, phenotypes, maternity, mother, burn_in, thinning_interval, number_of_mcmc_samples, global_genotyping_error_rates, update_error_rates, update_allele_frequencies, concentration, lambda_mother, lambda_father, starting_dropout_rate, starting_mistyping_rate)
+    .Call(`_paternityDP_sample_parentage_and_error_rates`, phenotypes, maternity, mother, burn_in, thinning_interval, number_of_mcmc_samples, global_genotyping_error_rates, update_error_rates, update_allele_frequencies, concentration, lambda_mother, lambda_father, starting_dropout_rate, starting_mistyping_rate)
 }
 

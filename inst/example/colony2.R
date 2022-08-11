@@ -1,4 +1,4 @@
-library(sydneyPaternity)
+library(paternityDP)
 
 genotype_data <- genotype_array_from_txt("colony2_genotypes.txt")
 

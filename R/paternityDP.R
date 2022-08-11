@@ -371,7 +371,7 @@ cross_validation_for_number_of_parents <-
   best_fathers <- average_scores$fathers[which.max(average_scores$x)]
   best_mothers <- average_scores$mothers[which.max(average_scores$x)]
   new_phenotypes <- add_unsampled_to_phenotype_array(phenotypes, mothers=best_mothers-length(sampled_mothers), fathers=best_fathers, offspring=1) 
-  fit <- sydneyPaternity:::sample_parentage_and_error_rates_from_joint_posterior(
+  fit <- paternityDP:::sample_parentage_and_error_rates_from_joint_posterior(
            new_phenotypes,
            c(sampled_mothers, grep("add_mother", dimnames(new_phenotypes)[[2]])),
            grep("add_father", dimnames(new_phenotypes)[[2]]),

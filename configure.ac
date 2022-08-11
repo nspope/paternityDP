@@ -11,7 +11,7 @@
 AC_PREREQ(2.61)
 
 ## Process this file with autoconf to produce a configure script.
-AC_INIT([sydneyPaternity], [1.0.0], [nspope@utexas.edu])
+AC_INIT([paternityDP], [1.0.0], [nspope@utexas.edu])
 
 ## Set R_HOME, respecting an environment variable if one is set
 : ${R_HOME=$(R RHOME)}

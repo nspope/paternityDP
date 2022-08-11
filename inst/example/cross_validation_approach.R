@@ -1,6 +1,6 @@
 #this script is for proof of concept and some targeted testing of inferring multiple maternity via cross validation
 
-library(sydneyPaternity)
+library(paternityDP)
 library(abind)
 
 #for reproducible results
@@ -40,7 +40,7 @@ list_of_genotype_arrays_to_txt(data, filename = "example_data.txt")
 phenotypes <- genotype_array_from_txt("example_data.txt")
 
 #proof of c
-oof <- sydneyPaternity:::sample_parentage_and_error_rates_from_joint_posterior(
+oof <- paternityDP:::sample_parentage_and_error_rates_from_joint_posterior(
   phenotypes, 
   grep("mother", dimnames(phenotypes)[[2]]),
   grep("father", dimnames(phenotypes)[[2]]),
@@ -50,8 +50,8 @@ oof <- sydneyPaternity:::sample_parentage_and_error_rates_from_joint_posterior(
   )
 
 #check overfitting
-phenotypes2 <- sydneyPaternity:::add_unsampled_parents_to_phenotype_array(phenotypes, 2)
-oof2 <- sydneyPaternity:::sample_parentage_and_error_rates_from_joint_posterior(
+phenotypes2 <- paternityDP:::add_unsampled_parents_to_phenotype_array(phenotypes, 2)
+oof2 <- paternityDP:::sample_parentage_and_error_rates_from_joint_posterior(
   phenotypes2,                                                                                
   grep("mother", dimnames(phenotypes2)[[2]]),
   grep("father", dimnames(phenotypes2)[[2]]),
@@ -64,7 +64,7 @@ oof2 <- sydneyPaternity:::sample_parentage_and_error_rates_from_joint_posterior(
 drop_mom <- grep("mother", dimnames(phenotypes)[[2]])[1]
 drop_dad <- grep("father", dimnames(phenotypes)[[2]])[1]
 phenotypes3 <- phenotypes[,-c(drop_mom,drop_dad),]
-oof3 <- sydneyPaternity:::sample_parentage_and_error_rates_from_joint_posterior(
+oof3 <- paternityDP:::sample_parentage_and_error_rates_from_joint_posterior(
   phenotypes3,                                                                                
   grep("mother", dimnames(phenotypes3)[[2]]),
   grep("father", dimnames(phenotypes3)[[2]]),

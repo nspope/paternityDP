@@ -4,13 +4,13 @@ mistyping and dropout errors are estimated jointly with paternity. A Dirichlet
 process prior is used to encourage parsimonious reconstructions (e.g. involving
 the fewest numbers of fathers). A Gibbs sampler is used to draw MCMC samples
 from the joint posterior of paternity assignments and error rates. This package
-accompanies the paper "TITLE NEEDED" by Bird et al. (in prep).
+accompanies the paper [TITLE FORTHCOMING] by Bird et al. (in prep).
 
 ### Usage example
 ```r
-library(sydneyPaternity)
+library(paternityDP)
 
-genotype_data <- genotype_array_from_txt(system.file("example/colony2_genotypes.txt", package="sydneyPaternity"))
+genotype_data <- genotype_array_from_txt(system.file("example/colony2_genotypes.txt", package="paternityDP"))
 
 #drop loci w/ >50% missing loci
 genotype_data <- remove_loci_with_excessive_missingness(genotype_data, 0.5) 

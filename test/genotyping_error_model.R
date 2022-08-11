@@ -1,4 +1,4 @@
-library(sydneyPaternity)
+library(paternityDP)
 
 nall=4
 E1 = 0.23
@@ -7,7 +7,7 @@ e1 = E1
 e2 = E2
 
 #test behavior for monomorphic
-sydneyPaternity:::genotyping_error_model(c(0,0),0,0,1,E1,E2)
+paternityDP:::genotyping_error_model(c(0,0),0,0,1,E1,E2)
 
 #test calculation of probabilities
 geno <- cbind(combn(1:nall,2)); for(i in 1:nall) geno <- cbind(geno, i)
@@ -16,8 +16,8 @@ out <- c()
 for(i in 1:ncol(geno))
   for(j in 1:ncol(geno))
 {
-  val <- sydneyPaternity:::genotyping_error_model(geno[,i],geno[1,j],geno[2,j],4,E1,E2)
-  cls <- sydneyPaternity:::genotyping_error_model_class(geno[,i],geno[1,j],geno[2,j])
+  val <- paternityDP:::genotyping_error_model(geno[,i],geno[1,j],geno[2,j],4,E1,E2)
+  cls <- paternityDP:::genotyping_error_model_class(geno[,i],geno[1,j],geno[2,j])
   out <- rbind(out, data.frame(prob=val, class=cls, phenotype=paste(geno[,i],collapse="/"), genotype=paste(geno[,j],collapse="/")))
 }
 sum(out[out$genotype=="1/2",1])
@@ -77,17 +77,17 @@ sim_error_model_events <- function(genotype, nall, err1, err2)
     }
     err_count[2] <- err_count[2] + is_err2
   }
-  cls <- sydneyPaternity:::genotyping_error_model_class(phenotype,genotype[1],genotype[2])
+  cls <- paternityDP:::genotyping_error_model_class(phenotype,genotype[1],genotype[2])
   return(c(cls,paste(err_count,collapse=":")))
 }
 oof11 <- replicate(100000,sim_error_model_events(c(1,1),4,E1,E2))
 prop.table(table(oof11[1,],oof11[2,])/100000,1)
-table(apply(replicate(10000, sydneyPaternity:::simulate_genotyping_errors(c(1,1),1,1,4,E1,E2)),3,paste,collapse=":"))/10000
-table(apply(replicate(10000, sydneyPaternity:::simulate_genotyping_errors(c(1,2),1,1,4,E1,E2)),3,paste,collapse=":"))/10000
-table(apply(replicate(10000, sydneyPaternity:::simulate_genotyping_errors(c(2,2),1,1,4,E1,E2)),3,paste,collapse=":"))/10000
+table(apply(replicate(10000, paternityDP:::simulate_genotyping_errors(c(1,1),1,1,4,E1,E2)),3,paste,collapse=":"))/10000
+table(apply(replicate(10000, paternityDP:::simulate_genotyping_errors(c(1,2),1,1,4,E1,E2)),3,paste,collapse=":"))/10000
+table(apply(replicate(10000, paternityDP:::simulate_genotyping_errors(c(2,2),1,1,4,E1,E2)),3,paste,collapse=":"))/10000
 oof12 <- replicate(100000,sim_error_model_events(c(1,2),4,E1,E2))
 prop.table(table(oof12[1,],oof12[2,])/100000,1)
-table(apply(replicate(10000, sydneyPaternity:::simulate_genotyping_errors(c(1,2),1,2,4,E1,E2)),3,paste,collapse=":"))/10000
-table(apply(replicate(10000, sydneyPaternity:::simulate_genotyping_errors(c(2,2),1,2,4,E1,E2)),3,paste,collapse=":"))/10000
-table(apply(replicate(10000, sydneyPaternity:::simulate_genotyping_errors(c(1,4),2,3,4,E1,E2)),3,paste,collapse=":"))/10000
-table(apply(replicate(10000, sydneyPaternity:::simulate_genotyping_errors(c(1,2),2,3,4,E1,E2)),3,paste,collapse=":"))/10000
+table(apply(replicate(10000, paternityDP:::simulate_genotyping_errors(c(1,2),1,2,4,E1,E2)),3,paste,collapse=":"))/10000
+table(apply(replicate(10000, paternityDP:::simulate_genotyping_errors(c(2,2),1,2,4,E1,E2)),3,paste,collapse=":"))/10000
+table(apply(replicate(10000, paternityDP:::simulate_genotyping_errors(c(1,4),2,3,4,E1,E2)),3,paste,collapse=":"))/10000
+table(apply(replicate(10000, paternityDP:::simulate_genotyping_errors(c(1,2),2,3,4,E1,E2)),3,paste,collapse=":"))/10000

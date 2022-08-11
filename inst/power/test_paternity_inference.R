@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 args = commandArgs(trailingOnly=TRUE)
-library(sydneyPaternity)
+library(paternityDP)
 
 mat_gno <- read.csv("MaternalGenotypes.csv")[1:23,2:12] #check indices
 mat_gno <- lapply(apply(mat_gno, 2, strsplit, split="/"), function(x) { x <- table(unlist(x)); x <- x[names(x)!="0"]; x <- x/sum(x)} )

@@ -1,4 +1,4 @@
-library(sydneyPaternity)
+library(paternityDP)
 
 #for reproducible results
 set.seed(29800)
